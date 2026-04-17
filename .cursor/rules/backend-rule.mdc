@@ -8,6 +8,37 @@ alwaysApply: false
 
 ---
 
+## 0. Text encoding & non-ASCII strings (CRITICAL — never corrupt Korean or other Unicode)
+
+All source, XML, YAML, and property files that hold human-readable text **must stay valid UTF-8**. Corruption appears as `�` (U+FFFD), `?` sequences, mojibake (`Ã«`, `ì§€`), or **wrong messages** returned to clients.
+
+### Prompt-writing techniques (English instructions for AI / humans)
+
+1. **Never ask an assistant to “retype from memory”** Korean (or any non-English) **business copy**, error messages, or API description text. Use **verbatim** text from specs, tickets, or existing code; or cite **file + line** and say **do not change the string contents**.
+
+2. **Prefer mechanical edits** (“add `@Valid`”, “rename method only”) over rewriting user-visible messages in the prompt.
+
+3. **When syncing from another repo**, specify: **UTF-8 read/write**, then **only** allowed identifier/endpoint renames — not “translate comments.”
+
+4. **After bulk edits**, request verification: no U+FFFD in changed files, and **compile / tests** (broken encoding can break even comments in edge cases).
+
+5. **Legacy `*.properties`**: if the team still uses ISO-8859-1 with `\uXXXX` escapes, **do not** mix ad-hoc UTF-8 in the same file without a team convention. Prefer **UTF-8** with Spring Boot’s default for `application*.yml` / `application*.properties` when the project standard allows it.
+
+### Source rules
+
+**MUST:**
+
+- ✅ Store `.java`, `.xml`, `.yml`, `.properties`, `.sql` (when edited in-repo) as **UTF-8** where the build and Spring expect it (align with team `pom.xml` / Gradle encoding settings).
+- ✅ Preserve existing **Korean log/messages** unless the ticket explicitly changes wording.
+- ✅ Use English for **new** technical comments if that avoids encoding noise in mixed environments — but do not “fix” existing Korean by blind retyping.
+
+**MUST NOT:**
+
+- ❌ Paste Korean through tools that corrupt encoding, then save without checking.
+- ❌ Replace unreadable text with long `????` or `�` placeholders in committed code.
+
+---
+
 ## 1. Your Role and Constraints
 
 - **New APIs**: Use standard Spring Boot REST style only (no `.do`, no `.Ajax`, no `HttpServletRequest`/`Model` in new endpoints).
@@ -495,12 +526,13 @@ favoriteDAO.insertByUserAndTarget(command);
 
 When adding or editing an API in waterb_backend:
 
-1. **Controller**: `@RestController`, `ResponseEntity<T>`, no request/session/model, no business logic; use `@RequestPart("data")` + optional files for multipart.
-2. **DTO**: Separate request/response; validation on request DTOs; use `LocalDate`/`LocalDateTime` and enums where appropriate. **For any field named like `pXxx` or `cXxx` (single leading lowercase + uppercase), add `@JsonProperty("fieldName")`** so Jackson serializes/deserializes correctly (see §4.1).
-3. **Service**: All business and transaction logic; Controller only delegates. Do **not** map egovMap/List&lt;Object&gt; to DTO in Service; let MyBatis return DTO.
-4. **Mapper**: Use **DTO** for `parameterType` and `resultType` (not egovMap); register DTO packages in mapper-config.xml and use **short alias** in XML; use **UPPER_SNAKE_CASE** for all result column names/aliases in SQL (e.g. `USER_NM`, `ESNTL_ID`) — mapUnderscoreToCamelCase maps to DTO (see §6.3); clear SQL (e.g. explicit `SET col = NULL`).
-5. **URL**: Noun-based paths + HTTP method; no `.do`/`.Ajax` in new endpoints.
-6. **User-web `/auth/find-user-id`, `/auth/account-recovery/find-user-id`, `/auth/password-reset/request`**: Follow §7.2 (ARMUSER DI + `USER_SE`, non-`D` only, response `resultCode` contract).
-7. **Legacy**: Do not extend eGov patterns; new code = REST-only conventions above.
+1. **Encoding**: UTF-8 for sources; do not retype Korean/error copy from memory — preserve or take verbatim from spec; no `�` / `????` placeholders in committed strings.
+2. **Controller**: `@RestController`, `ResponseEntity<T>`, no request/session/model, no business logic; use `@RequestPart("data")` + optional files for multipart.
+3. **DTO**: Separate request/response; validation on request DTOs; use `LocalDate`/`LocalDateTime` and enums where appropriate. **For any field named like `pXxx` or `cXxx` (single leading lowercase + uppercase), add `@JsonProperty("fieldName")`** so Jackson serializes/deserializes correctly (see §4.1).
+4. **Service**: All business and transaction logic; Controller only delegates. Do **not** map egovMap/List&lt;Object&gt; to DTO in Service; let MyBatis return DTO.
+5. **Mapper**: Use **DTO** for `parameterType` and `resultType` (not egovMap); register DTO packages in mapper-config.xml and use **short alias** in XML; use **UPPER_SNAKE_CASE** for all result column names/aliases in SQL (e.g. `USER_NM`, `ESNTL_ID`) — mapUnderscoreToCamelCase maps to DTO (see §6.3); clear SQL (e.g. explicit `SET col = NULL`).
+6. **URL**: Noun-based paths + HTTP method; no `.do`/`.Ajax` in new endpoints.
+7. **User-web `/auth/find-user-id`, `/auth/account-recovery/find-user-id`, `/auth/password-reset/request`**: Follow §7.2 (ARMUSER DI + `USER_SE`, non-`D` only, response `resultCode` contract).
+8. **Legacy**: Do not extend eGov patterns; new code = REST-only conventions above.
 
 If one API follows this structure, every new API should look like it — **consistency over personal style**.
