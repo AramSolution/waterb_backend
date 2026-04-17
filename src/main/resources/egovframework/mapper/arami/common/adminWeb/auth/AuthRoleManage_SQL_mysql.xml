@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="authRoleManageDAO">
+	<resultMap id="role_pattern" type="arami.common.auth.service.impl.AuthRoleDTO">
+		<result property="roleCode" column="ROLE_CODE"/>
+		<result property="roleType" column="ROLE_TYPE"/>
+		<result property="rolePttrn" column="ROLE_PTTRN"/>
+	</resultMap>
+
+	<select id="selectRolePattern" resultMap="role_pattern">
+		SELECT A1.ROLE_CODE
+			 , A1.ROLE_TYPE
+			 , COALESCE(A1.ROLE_NAME, '') AS ROLE_NAME
+			 , A1.ROLE_PTTRN
+		  FROM ARMROLE_PTRN A1
+		 WHERE A1.STTUS_CODE = 'A'
+		 ORDER BY A1.SORT_NO
+	</select>
+
+</mapper>

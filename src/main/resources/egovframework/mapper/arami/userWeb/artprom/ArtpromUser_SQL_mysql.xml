@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="artpromUserDAO">
+
+    <!-- 사용자웹 포털(/userWeb) 메인 카드 목록 - REQ_GB/개수 제한 없이 조회. 기본은 홍보(PRO_TYPE=03) 제외 -->
+    <select id="selectArtpromMainCardList" parameterType="ArtpromUserMainCardListRequest" resultType="ArtpromUserListDTO">
+        SELECT *
+          FROM (
+            SELECT PRO_ID
+                 , COALESCE(PRO_GB, '') AS PRO_GB
+                 , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR000' AND CODE = PRO_GB), '') AS PRO_GB_NM
+                 , COALESCE(PRO_TARGET, '') AS PRO_TARGET
+                 , IF(LOCATE('E', PRO_TARGET) > 0, '초등', '') AS PRO_TYPE1
+                 , IF(LOCATE('J', PRO_TARGET) > 0, '중등', '') AS PRO_TYPE2
+                 , IF(LOCATE('H', PRO_TARGET) > 0, '고등', '') AS PRO_TYPE3
+                 , IF(LOCATE('U', PRO_TARGET) > 0, '대학', '') AS PRO_TYPE4
+                 , IF(LOCATE('T', PRO_TARGET) > 0, '기타', '') AS PRO_TYPE5
+                 , IF(LOCATE('Y1', PRO_TARGET) > 0, '영유아', '') AS PRO_TYPE6
+                 , IF(LOCATE('O1', PRO_TARGET) > 0, '일반', '') AS PRO_TYPE7
+                 , CASE WHEN PRO_TYPE = '01' THEN '교육'
+                        WHEN PRO_TYPE = '02' THEN '지원사업'
+                        WHEN PRO_TYPE = '03' THEN '홍보'
+                        ELSE '' END AS PRO_TYPE
+                 , PRO_NM
+                 , COALESCE(PRO_TARGET_NM , '') AS PRO_TARGET_NM
+                 , COALESCE(ETC_NM , '') AS ETC_NM
+                 , COALESCE(DATE_FORMAT(REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+                 , COALESCE(DATE_FORMAT(REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+                 , PRO_SUM
+                 , COALESCE(RUN_STA, '') AS RUN_STA
+                 , CASE WHEN RUN_STA = '01' THEN '접수예정'
+                        WHEN RUN_STA = '02' THEN '접수중'
+                        WHEN RUN_STA = '04' THEN '접수마감'
+                        WHEN RUN_STA = '99' THEN '취소'
+                        ELSE '' END AS RUN_STA_NM
+              FROM ARTPROM
+             WHERE (RUN_STA IS NULL OR RUN_STA != '99')
+               AND STTUS_CODE = 'A'
+               AND CURDATE() BETWEEN REC_FROM_DD AND REC_TO_DD
+               <if test="includePromo == null or includePromo == false">
+               AND (PRO_TYPE IS NULL OR PRO_TYPE != '03')
+               </if>
+             ORDER BY REC_FROM_DD
+          ) A0
+    </select>
+
+    <!-- 지원사업 목록 조회 (사용자웹) - RUN_STA != 99(취소 제외). RUN_STA=지원사업(공고) 진행상태: 01=공고, 02=접수중, 03=검토중, 04=진행, 05=완료, 99=취소. STTUS_CODE=A -->
+    <select id="selectArtpromList" parameterType="ArtpromUserListRequest" resultType="ArtpromUserListDTO">
+        SELECT *
+              FROM (
+                SELECT PRO_ID
+                    , COALESCE(PRO_GB, '') AS PRO_GB
+                    , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR000' AND CODE = PRO_GB), '') AS PRO_GB_NM
+                    , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = PRO_DEPA), '') AS PRO_DEPA_NM
+                    , COALESCE(PRO_PART, '') AS PRO_PART
+                    , COALESCE(PRO_TARGET, '') AS PRO_TARGET
+                    , IF(LOCATE('E', PRO_TARGET) > 0, '초등', '') AS PRO_TYPE1
+                    , IF(LOCATE('J', PRO_TARGET) > 0, '중등', '') AS PRO_TYPE2
+                    , IF(LOCATE('H', PRO_TARGET) > 0, '고등', '') AS PRO_TYPE3
+                    , IF(LOCATE('U', PRO_TARGET) > 0, '대학', '') AS PRO_TYPE4
+                    , IF(LOCATE('T', PRO_TARGET) > 0, '기타', '') AS PRO_TYPE5
+                    , IF(LOCATE('Y1', PRO_TARGET) > 0, '영유아', '') AS PRO_TYPE6
+                    , IF(LOCATE('O1', PRO_TARGET) > 0, '일반', '') AS PRO_TYPE7
+                    , CASE WHEN PRO_TYPE = '01' THEN '교육'
+                            WHEN PRO_TYPE = '02' THEN '지원사업'
+                            WHEN PRO_TYPE = '03' THEN '홍보'
+                            ELSE '' END AS PRO_TYPE
+                    , PRO_NM
+                    , COALESCE(PRO_TARGET_NM , '') AS PRO_TARGET_NM
+		                , COALESCE(ETC_NM , '') AS ETC_NM 
+                    , COALESCE(DATE_FORMAT(REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+                    , COALESCE(DATE_FORMAT(REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+                    , PRO_SUM
+                    , COALESCE(RUN_STA, '') AS RUN_STA
+                    , CASE
+                        WHEN #{esntlId} IS NOT NULL AND #{esntlId} != '' AND EXISTS (
+                            SELECT 1
+                              FROM ARTMARK M1
+                             WHERE M1.ESNTL_ID = #{esntlId}
+                               AND M1.PRO_ID = ARTPROM.PRO_ID
+                        ) THEN 'Y'
+                        ELSE 'N'
+                      END AS FAVORITE_YN
+                    , CASE WHEN RUN_STA = '01' THEN '접수예정'
+                            WHEN RUN_STA = '02' THEN '접수중'
+                            WHEN RUN_STA = '04' THEN '접수마감'
+                            WHEN RUN_STA = '99' THEN '취소'
+                            ELSE '' END AS RUN_STA_NM
+                  FROM ARTPROM
+                WHERE (RUN_STA IS NULL OR RUN_STA != '99')
+                  AND STTUS_CODE = 'A'
+                  AND CURDATE() BETWEEN REC_FROM_DD AND REC_TO_DD
+                  <!-- schoolGb: E=초등전학년, J=중등전학년, H=고등전학년. 해당 학교급이 포함되면 조회 -->
+                  <choose>
+                    <when test='schoolGb != null and schoolGb.equals("E")'>
+                  AND (FIND_IN_SET('E1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E3', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E4', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E5', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E6', REPLACE(PRO_TARGET, '|', ',')) > 0)
+                    </when>
+                    <when test='schoolGb != null and schoolGb.equals("J")'>
+                  AND (FIND_IN_SET('J1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('J2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('J3', REPLACE(PRO_TARGET, '|', ',')) > 0)
+                    </when>
+                    <when test='schoolGb != null and schoolGb.equals("H")'>
+                  AND (FIND_IN_SET('H1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('H2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('H3', REPLACE(PRO_TARGET, '|', ',')) > 0)
+                    </when>
+                    <when test="proTarget != null and proTarget != ''">
+                  AND FIND_IN_SET(#{proTarget}, REPLACE(PRO_TARGET, '|', ',')) > 0
+                    </when>
+                  </choose>
+                  <!-- REQ_GB: 1=학생, 2=학부모, 3=학원, 4=멘토, 5=학교. 해당 위치 값이 Y인 건만 조회 -->
+                  <if test="reqGbPosition != null and reqGbPosition >= 1 and reqGbPosition &lt;= 5">
+                  AND SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(REQ_GB,'N|N|N|N|N'), REPEAT('|N', 5)), '|', #{reqGbPosition}), '|', -1) = 'Y'
+                  </if>
+                  <!-- PRO_PART 사업분야 위치 필터 (1=교육/학습, 2=진로/진학, 3=문화/예술/체험, 4=복지/장학, 5=기타). 해당 위치 값이 Y인 건만 조회 -->
+                  <if test="proPartPosition != null and proPartPosition >= 1 and proPartPosition &lt;= 5">
+                  AND SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', #{proPartPosition}), '|', -1) = 'Y'
+                  </if>
+                  <if test="listProTypes != null and listProTypes.size() > 0">
+                  AND PRO_TYPE IN
+                  <foreach collection="listProTypes" item="pt" open="(" separator="," close=")">
+                  #{pt}
+                  </foreach>
+                  </if>
+                  <!-- RUN_STA 진행상태 필터 (01=접수예정, 02=접수중, 04=접수마감, 99=취소). 해당 값이 포함된 건만 조회 -->
+                  <if test="listRunStas != null and listRunStas.size() > 0">
+                  AND RUN_STA IN
+                  <foreach collection="listRunStas" item="rs" open="(" separator="," close=")">
+                  #{rs}
+                  </foreach>
+                  </if>
+                  <!-- 검색어 필터 -->
+                  <if test="searchWord != null and searchWord != ''">
+                  AND (
+                        COALESCE(PRO_NM, '')          LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_SUM, '')         LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_DESC, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_DEPA, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_CHARGE, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_TEL, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_TARGET, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_ENQUIRY, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_HOW, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_SPACE, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_NUM, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_COST, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                      OR COALESCE(PRO_PAGE, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                  )
+                  </if>
+                ORDER BY REC_FROM_DD
+            ) A0
+         LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 지원사업 목록 카운트 (사용자웹) - 목록과 동일 조건 (RUN_STA != 99) -->
+    <select id="selectArtpromListCount" parameterType="ArtpromUserListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTPROM
+         WHERE (RUN_STA IS NULL OR RUN_STA != '99')
+           AND STTUS_CODE = 'A'
+           AND CURDATE() BETWEEN REC_FROM_DD AND REC_TO_DD
+           <choose>
+             <when test='schoolGb != null and schoolGb.equals("E")'>
+           AND (FIND_IN_SET('E1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E3', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E4', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E5', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('E6', REPLACE(PRO_TARGET, '|', ',')) > 0)
+             </when>
+             <when test='schoolGb != null and schoolGb.equals("J")'>
+           AND (FIND_IN_SET('J1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('J2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('J3', REPLACE(PRO_TARGET, '|', ',')) > 0)
+             </when>
+             <when test='schoolGb != null and schoolGb.equals("H")'>
+           AND (FIND_IN_SET('H1', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('H2', REPLACE(PRO_TARGET, '|', ',')) > 0 OR FIND_IN_SET('H3', REPLACE(PRO_TARGET, '|', ',')) > 0)
+             </when>
+             <when test="proTarget != null and proTarget != ''">
+           AND FIND_IN_SET(#{proTarget}, REPLACE(PRO_TARGET, '|', ',')) > 0
+             </when>
+           </choose>
+           <if test="reqGbPosition != null and reqGbPosition >= 1 and reqGbPosition &lt;= 5">
+           AND SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(REQ_GB,'N|N|N|N|N'), REPEAT('|N', 5)), '|', #{reqGbPosition}), '|', -1) = 'Y'
+           </if>
+           <if test="proPartPosition != null and proPartPosition >= 1 and proPartPosition &lt;= 5">
+            AND SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', #{proPartPosition}), '|', -1) = 'Y'
+            </if>
+            <if test="listProTypes != null and listProTypes.size() > 0">
+            AND PRO_TYPE IN
+            <foreach collection="listProTypes" item="pt" open="(" separator="," close=")">
+            #{pt}
+            </foreach>
+            </if>
+            <if test="listRunStas != null and listRunStas.size() > 0">
+            AND RUN_STA IN
+            <foreach collection="listRunStas" item="rs" open="(" separator="," close=")">
+            #{rs}
+            </foreach>
+            </if>
+            <if test="searchWord != null and searchWord != ''">
+            AND (
+                  COALESCE(PRO_NM, '')          LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_SUM, '')         LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_DESC, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_DEPA, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_CHARGE, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_TEL, '')        LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_TARGET, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_ENQUIRY, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_HOW, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_SPACE, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_NUM, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_COST, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                OR COALESCE(PRO_PAGE, '')      LIKE CONCAT('%', #{searchWord}, '%')
+                )
+            </if>
+    </select>
+
+    <!-- 내가 신청/임시저장한 지원사업 목록 (MY PAGE 신청현황) - 신청 1건당 1행. ARMUSER: C_ESNTL_ID(자녀) 우선 표시명, 없으면 REQ_ESNTL_ID(신청자) — reqEsntlId와 동일 우선순위 -->
+    <!-- 내 신청 목록: 목록(/list)과 동일한 ARTPROM 기준 필드(proDepaNm, proPart, proType1~7, runSta/runStaNm) + 신청(ARTAPPM) 확장 필드 -->
+    <select id="selectMyAppliedArtpromList" parameterType="ArtpromUserMyAppliedListRequest" resultType="ArtpromUserListDTO">
+        SELECT A.PRO_ID AS proId
+             , COALESCE(A.PRO_GB, '') AS proGb
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR000' AND CODE = A.PRO_GB), '') AS proGbNm
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A.PRO_DEPA), '') AS proDepaNm
+             , COALESCE(A.PRO_PART, '') AS proPart
+             , COALESCE(B.REQ_ID, '') AS reqId
+             , COALESCE(A.PRO_TARGET, '') AS proTarget
+             , IF(LOCATE('E', A.PRO_TARGET) > 0, '초등', '') AS proType1
+             , IF(LOCATE('J', A.PRO_TARGET) > 0, '중등', '') AS proType2
+             , IF(LOCATE('H', A.PRO_TARGET) > 0, '고등', '') AS proType3
+             , IF(LOCATE('U', A.PRO_TARGET) > 0, '대학', '') AS proType4
+             , IF(LOCATE('T', A.PRO_TARGET) > 0, '기타', '') AS proType5
+             , IF(LOCATE('Y1', A.PRO_TARGET) > 0, '영유아', '') AS proType6
+             , IF(LOCATE('O1', A.PRO_TARGET) > 0, '일반', '') AS proType7
+             , CASE WHEN A.PRO_TYPE = '01' THEN '교육'
+                    WHEN A.PRO_TYPE = '02' THEN '지원사업'
+                    WHEN A.PRO_TYPE = '03' THEN '홍보'
+                    ELSE '' END AS proType
+             , A.PRO_NM AS proNm
+             , COALESCE(A.PRO_TARGET_NM, '') AS proTargetNm
+             , COALESCE(A.ETC_NM, '') AS etcNm
+             , COALESCE(DATE_FORMAT(A.REC_FROM_DD, '%Y%m%d'), '') AS recFromDd
+             , COALESCE(DATE_FORMAT(A.REC_TO_DD, '%Y%m%d'), '') AS recToDd
+             , A.PRO_SUM AS proSum
+             , COALESCE(A.RUN_STA, '') AS runSta
+             , CASE WHEN A.RUN_STA = '01' THEN '접수예정'
+                    WHEN A.RUN_STA = '02' THEN '접수중'
+                    WHEN A.RUN_STA = '04' THEN '접수마감'
+                    WHEN A.RUN_STA = '99' THEN '취소'
+                    ELSE '' END AS runStaNm
+             , CASE
+                   WHEN #{reqEsntlId} IS NOT NULL AND #{reqEsntlId} != '' AND EXISTS (
+                       SELECT 1
+                         FROM ARTMARK M1
+                        WHERE M1.ESNTL_ID = #{reqEsntlId}
+                          AND M1.PRO_ID = A.PRO_ID
+                   ) THEN 'Y'
+                   ELSE 'N'
+               END AS favoriteYn
+             , COALESCE(B.STTUS_CODE, '') AS appSttusCode
+             , CASE WHEN B.STTUS_CODE = '01' THEN '임시저장'
+                    WHEN B.STTUS_CODE = '02' THEN '신청'
+                    WHEN B.STTUS_CODE = '03' THEN '승인'
+                    WHEN B.STTUS_CODE = '04' THEN '완료'
+                    WHEN B.STTUS_CODE = '11' THEN '반려'
+                    WHEN B.STTUS_CODE = '12' THEN '중단'
+                    WHEN B.STTUS_CODE = '99' THEN '취소'
+                    ELSE '' END AS appSttusCodeNm
+             , COALESCE(B.PRO_SEQ, '0') AS proSeq
+             /* userWeb bizInput 진입 시 reqEsntlId는 자녀(student) 선택용으로 사용됨 */
+             , COALESCE(B.C_ESNTL_ID, B.REQ_ESNTL_ID, '') AS reqEsntlId
+             , COALESCE(
+                   NULLIF(TRIM(COALESCE(DECRYPT(UC.USER_NM), '')), ''),
+                   COALESCE(DECRYPT(UR.USER_NM), ''),
+                   ''
+               ) AS reqUserNm
+             , COALESCE(B.RESULT_GB, '') AS resultGb
+          FROM ARTAPPM B
+          INNER JOIN ARTPROM A ON B.PRO_ID = A.PRO_ID
+          LEFT JOIN ARMUSER UC ON B.C_ESNTL_ID = UC.ESNTL_ID
+          LEFT JOIN ARMUSER UR ON B.REQ_ESNTL_ID = UR.ESNTL_ID
+         WHERE A.STTUS_CODE = 'A'
+           /* REQ_ESNTL_ID = 신청자ID(로그인 사용자 uniqId) */
+           AND B.REQ_ESNTL_ID = #{reqEsntlId}
+           <if test="sttusCode != null and sttusCode != ''">AND B.STTUS_CODE = #{sttusCode}</if>
+         ORDER BY B.CHG_DATE DESC
+    </select>
+
+    <!-- 내가 신청/임시저장한 지원사업 목록 카운트 (신청 건수 = ARTAPPM 행 수) -->
+    <select id="selectMyAppliedArtpromListCount" parameterType="ArtpromUserMyAppliedListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTAPPM B
+          INNER JOIN ARTPROM A ON B.PRO_ID = A.PRO_ID
+         WHERE A.STTUS_CODE = 'A'
+           /* REQ_ESNTL_ID = 신청자ID(로그인 사용자 uniqId) */
+           AND B.REQ_ESNTL_ID = #{reqEsntlId}
+           <if test="sttusCode != null and sttusCode != ''">AND B.STTUS_CODE = #{sttusCode}</if>
+    </select>
+
+    <!-- 내가 신청/임시저장한 지원사업 목록 - 멘토 신청 (MY PAGE 신청현황) - 신청 1건당 1행. ARMUSER: C_ESNTL_ID(자녀) 우선 표시명, 없으면 REQ_ESNTL_ID(신청자) — reqEsntlId와 동일 우선순위 -->
+    <!-- 내 신청 목록: 목록(/list)과 동일 조건 ARTPROM 기준 필드(proDepaNm, proPart, proType1~7, runSta/runStaNm) + 신청(ARTAPMM) 확장 필드 -->
+    <select id="selectMyAppliedArtpromListMentor" parameterType="ArtpromUserMyAppliedListRequest" resultType="ArtpromUserListDTO">
+        SELECT A.PRO_ID AS proId
+             , COALESCE(A.PRO_GB, '') AS proGb
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR000' AND CODE = A.PRO_GB), '') AS proGbNm
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A.PRO_DEPA), '') AS proDepaNm
+             , COALESCE(A.PRO_PART, '') AS proPart
+             , COALESCE(B.REQ_ID, '') AS reqId
+             , COALESCE(A.PRO_TARGET, '') AS proTarget
+             , IF(LOCATE('E', A.PRO_TARGET) > 0, '초등', '') AS proType1
+             , IF(LOCATE('J', A.PRO_TARGET) > 0, '중등', '') AS proType2
+             , IF(LOCATE('H', A.PRO_TARGET) > 0, '고등', '') AS proType3
+             , IF(LOCATE('U', A.PRO_TARGET) > 0, '대학', '') AS proType4
+             , IF(LOCATE('T', A.PRO_TARGET) > 0, '기타', '') AS proType5
+             , IF(LOCATE('Y1', A.PRO_TARGET) > 0, '영유아', '') AS proType6
+             , IF(LOCATE('O1', A.PRO_TARGET) > 0, '일반', '') AS proType7
+             , CASE WHEN A.PRO_TYPE = '01' THEN '교육'
+                    WHEN A.PRO_TYPE = '02' THEN '지원사업'
+                    WHEN A.PRO_TYPE = '03' THEN '홍보'
+                    ELSE '' END AS proType
+             , A.PRO_NM AS proNm
+             , COALESCE(A.PRO_TARGET_NM, '') AS proTargetNm
+             , COALESCE(A.ETC_NM, '') AS etcNm
+             , COALESCE(DATE_FORMAT(A.REC_FROM_DD, '%Y%m%d'), '') AS recFromDd
+             , COALESCE(DATE_FORMAT(A.REC_TO_DD, '%Y%m%d'), '') AS recToDd
+             , A.PRO_SUM AS proSum
+             , COALESCE(A.RUN_STA, '') AS runSta
+             , CASE WHEN A.RUN_STA = '01' THEN '접수예정'
+                    WHEN A.RUN_STA = '02' THEN '접수중'
+                    WHEN A.RUN_STA = '04' THEN '접수마감'
+                    WHEN A.RUN_STA = '99' THEN '취소'
+                    ELSE '' END AS runStaNm
+             , CASE
+                   WHEN #{reqEsntlId} IS NOT NULL AND #{reqEsntlId} != '' AND EXISTS (
+                       SELECT 1
+                         FROM ARTMARK M1
+                        WHERE M1.ESNTL_ID = #{reqEsntlId}
+                          AND M1.PRO_ID = A.PRO_ID
+                   ) THEN 'Y'
+                   ELSE 'N'
+               END AS favoriteYn
+             , COALESCE(B.STTUS_CODE, '') AS appSttusCode
+             , CASE WHEN B.STTUS_CODE = '01' THEN '임시저장'
+                    WHEN B.STTUS_CODE = '02' THEN '신청'
+                    WHEN B.STTUS_CODE = '03' THEN '승인'
+                    WHEN B.STTUS_CODE = '04' THEN '완료'
+                    WHEN B.STTUS_CODE = '11' THEN '반려'
+                    WHEN B.STTUS_CODE = '12' THEN '중단'
+                    WHEN B.STTUS_CODE = '99' THEN '취소'
+                    ELSE '' END AS appSttusCodeNm
+             , COALESCE(B.PRO_SEQ, '0') AS proSeq
+             , COALESCE(B.REQ_ESNTL_ID, '') AS reqEsntlId
+             , COALESCE(COALESCE(DECRYPT(UR.USER_NM)), '') AS reqUserNm
+             , COALESCE(B.RESULT_GB, '') AS resultGb
+          FROM ARTAPMM B
+          INNER JOIN ARTPROM A ON B.PRO_ID = A.PRO_ID
+          LEFT JOIN ARMUSER UR ON B.REQ_ESNTL_ID = UR.ESNTL_ID
+         WHERE A.STTUS_CODE = 'A'
+           AND B.STTUS_CODE = 'A'
+           /* REQ_ESNTL_ID = 신청자ID(로그인 사용자 uniqId) */
+           AND B.REQ_ESNTL_ID = #{reqEsntlId}
+           <if test="sttusCode != null and sttusCode != ''">AND B.STTUS_CODE = #{sttusCode}</if>
+         ORDER BY B.CHG_DATE DESC
+    </select>
+
+    <!-- 내가 신청/임시저장한 지원사업 목록 카운트 - 멘토 신청 (신청 건수 = ARTAPMM 행 수) -->
+    <select id="selectMyAppliedArtpromListMentorCount" parameterType="ArtpromUserMyAppliedListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTAPMM B
+          INNER JOIN ARTPROM A ON B.PRO_ID = A.PRO_ID
+         WHERE A.STTUS_CODE = 'A'
+           AND B.STTUS_CODE = 'A'
+           /* REQ_ESNTL_ID = 신청자ID(로그인 사용자 uniqId) */
+           AND B.REQ_ESNTL_ID = #{reqEsntlId}
+           <if test="sttusCode != null and sttusCode != ''">AND B.STTUS_CODE = #{sttusCode}</if>
+    </select>
+
+    <!-- 내가 즐겨찾기한 지원사업 목록 (MY PAGE 즐겨찾기) -->
+    <select id="selectMyFavoriteArtpromList" parameterType="ArtpromUserMyFavoriteListRequest" resultType="ArtpromUserListDTO">
+        SELECT A.PRO_ID AS proId
+             , COALESCE(A.PRO_GB, '') AS proGb
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR000' AND CODE = A.PRO_GB), '') AS proGbNm
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A.PRO_DEPA), '') AS proDepaNm
+             , COALESCE(A.PRO_PART, '') AS proPart
+             , COALESCE(A.PRO_TARGET, '') AS proTarget
+             , IF(LOCATE('E', A.PRO_TARGET) > 0, '초등', '') AS proType1
+             , IF(LOCATE('J', A.PRO_TARGET) > 0, '중등', '') AS proType2
+             , IF(LOCATE('H', A.PRO_TARGET) > 0, '고등', '') AS proType3
+             , IF(LOCATE('U', A.PRO_TARGET) > 0, '대학', '') AS proType4
+             , IF(LOCATE('T', A.PRO_TARGET) > 0, '기타', '') AS proType5
+             , IF(LOCATE('Y1', A.PRO_TARGET) > 0, '영유아', '') AS proType6
+             , IF(LOCATE('O1', A.PRO_TARGET) > 0, '일반', '') AS proType7
+             , CASE WHEN A.PRO_TYPE = '01' THEN '교육'
+                    WHEN A.PRO_TYPE = '02' THEN '지원사업'
+                    WHEN A.PRO_TYPE = '03' THEN '홍보'
+                    ELSE '' END AS proType
+             , A.PRO_NM AS proNm
+             , COALESCE(A.PRO_TARGET_NM, '') AS proTargetNm
+             , COALESCE(A.ETC_NM, '') AS etcNm
+             , COALESCE(DATE_FORMAT(A.REC_FROM_DD, '%Y%m%d'), '') AS recFromDd
+             , COALESCE(DATE_FORMAT(A.REC_TO_DD, '%Y%m%d'), '') AS recToDd
+             , A.PRO_SUM AS proSum
+             , COALESCE(A.RUN_STA, '') AS runSta
+             , CASE WHEN A.RUN_STA = '01' THEN '접수예정'
+                    WHEN A.RUN_STA = '02' THEN '접수중'
+                    WHEN A.RUN_STA = '04' THEN '접수마감'
+                    WHEN A.RUN_STA = '99' THEN '취소'
+                    ELSE '' END AS runStaNm
+             , 'Y' AS favoriteYn
+          FROM ARTMARK M1
+          INNER JOIN ARTPROM A ON M1.PRO_ID = A.PRO_ID
+         WHERE M1.ESNTL_ID = #{reqEsntlId}
+           AND A.STTUS_CODE = 'A'
+           AND (A.RUN_STA IS NULL OR A.RUN_STA != '99')
+         ORDER BY M1.CHG_DATE DESC
+         LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 내가 즐겨찾기한 지원사업 목록 카운트 -->
+    <select id="selectMyFavoriteArtpromListCount" parameterType="ArtpromUserMyFavoriteListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTMARK M1
+          INNER JOIN ARTPROM A ON M1.PRO_ID = A.PRO_ID
+         WHERE M1.ESNTL_ID = #{reqEsntlId}
+           AND A.STTUS_CODE = 'A'
+           AND (A.RUN_STA IS NULL OR A.RUN_STA != '99')
+    </select>
+
+    <!-- 지원사업 상세 조회 (사용자웹) -->
+    <select id="selectArtpromDetail" parameterType="ArtpromUserDetailRequest" resultType="ArtpromUserDTO">
+        SELECT COALESCE(A1.PRO_ID, '') AS PRO_ID
+             , COALESCE(A1.PRO_GB, '') AS PRO_GB
+             , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+             , COALESCE(A1.REQ_GB, '') AS REQ_GB
+             , COALESCE(A1.PRO_NM, '') AS PRO_NM
+             , COALESCE(A1.PRO_TARGET_NM, '') AS PRO_TARGET_NM
+             , COALESCE(A1.ETC_NM, '') AS ETC_NM
+             , COALESCE(A1.EDU_GB, 'N') AS EDU_GB
+             , COALESCE(A1.PRO_TARGET, '') AS PRO_TARGET
+             , COALESCE(A1.BASIC_YN, 'N') AS BASIC_YN
+             , COALESCE(A1.POOR_YN, 'N') AS POOR_YN
+             , COALESCE(A1.SINGLE_YN, 'N') AS SINGLE_YN
+             , COALESCE(DATE_FORMAT(A1.REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+             , COALESCE(DATE_FORMAT(A1.REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+             , COALESCE(A1.REC_CNT, 0) AS REC_CNT
+             , COALESCE(A1.PRO_SUM, '') AS PRO_SUM
+             , COALESCE(A1.PRO_DESC, '') AS PRO_DESC
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A1.PRO_DEPA), '') AS PRO_DEPA
+             , COALESCE(DECRYPT(A1.PRO_CHARGE), '') AS PRO_CHARGE
+             , COALESCE(DECRYPT(A1.PRO_TEL), '') AS PRO_TEL
+             , COALESCE(A1.PRO_PART, '') AS PRO_PART
+             , COALESCE(CONCAT_WS(', '
+                    , IF(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(A1.PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', 1), '|', -1) = 'Y', '교육/학습', NULL)
+                    , IF(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(A1.PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', 2), '|', -1) = 'Y', '진로/진학', NULL)
+                    , IF(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(A1.PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', 3), '|', -1) = 'Y', '문화/예술/체험', NULL)
+                    , IF(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(A1.PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', 4), '|', -1) = 'Y', '복지/장학', NULL)
+                    , IF(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(COALESCE(A1.PRO_PART,'N|N|N|N|N'), REPEAT('|N', 5)), '|', 5), '|', -1) = 'Y', '기타', NULL)
+               ), '') AS PRO_PART_NM
+             , COALESCE(DATE_FORMAT(A1.PRO_FROM_DD, '%Y-%m-%d'), '') AS PRO_FROM_DD
+             , COALESCE(DATE_FORMAT(A1.PRO_TO_DD, '%Y-%m-%d'), '') AS PRO_TO_DD
+             , COALESCE(A1.PRO_ENQUIRY, '') AS PRO_ENQUIRY
+             , COALESCE(A1.PRO_HOW, '') AS PRO_HOW
+             , COALESCE(A1.PRO_SPACE, '') AS PRO_SPACE
+             , COALESCE(A1.PRO_NUM, '') AS PRO_NUM
+             , COALESCE(A1.PRO_COST, '') AS PRO_COST
+             , COALESCE(A1.PRO_PAGE, '') AS PRO_PAGE
+             , COALESCE(A1.PRO_DESIGN, '') AS PRO_DESIGN
+             , COALESCE(A1.PRO_FILE_ID, '') AS PRO_FILE_ID
+             , COALESCE(A1.FILE_ID, '') AS FILE_ID
+             , COALESCE(A1.RUN_STA, '') AS RUN_STA
+             , CASE WHEN RUN_STA = '01' THEN '접수예정'
+                    WHEN RUN_STA = '02' THEN '접수중'
+                    WHEN RUN_STA = '04' THEN '접수마감'
+                    WHEN RUN_STA = '99' THEN '취소'
+                    ELSE '' END AS RUN_STA_NM
+             , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+          FROM ARTPROM A1
+         WHERE A1.PRO_ID = #{proId}
+           AND A1.STTUS_CODE = 'A'
+    </select>
+
+    <!-- 멘토업무(mentorWork) 화면 - 사업명 검색용 사업 목록. req_gb 7번째 'Y', RUN_STA 04·05 -->
+    <select id="selectMentorWorkProjectList" resultType="ArtpromMentorWorkProjectItem">
+        SELECT RUN_STA
+             , CASE WHEN RUN_STA = '01' THEN '접수예정'
+                    WHEN RUN_STA = '02' THEN '접수중'
+                    WHEN RUN_STA = '04' THEN '접수마감'
+                    WHEN RUN_STA = '99' THEN '취소'
+                    ELSE '' END AS RUN_STA_NM
+             , PRO_ID
+             , PRO_NM
+             , CONCAT(DATE_FORMAT(REC_FROM_DD, '%Y-%m-%d'), ' ~ ', DATE_FORMAT(REC_TO_DD, '%Y-%m-%d')) AS REQ_DATE
+          FROM ARTPROM
+         WHERE SUBSTRING(REQ_GB, 7, 1) = 'Y'
+           AND RUN_STA IN ('02', '04')
+           AND STTUS_CODE = 'A'
+         ORDER BY REC_FROM_DD DESC
+    </select>
+
+    <!-- 사용자 즐겨찾기 삭제(동일 ESNTL_ID + PRO_ID 선삭제) -->
+    <delete id="deleteArtmark" parameterType="ArtpromUserFavoriteRequest">
+        DELETE
+          FROM ARTMARK
+         WHERE ESNTL_ID = #{esntlId}
+           AND PRO_ID = #{proId}
+    </delete>
+
+    <!-- 사용자 즐겨찾기 등록 -->
+    <insert id="insertArtmark" parameterType="ArtpromUserFavoriteRequest">
+        INSERT INTO ARTMARK (
+            ESNTL_ID,
+            PRO_ID,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{esntlId},
+            #{proId},
+            #{esntlId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,40 @@
+# TypeScript incremental build cache
+*.tsbuildinfo
+# 프로젝트 제외 경로
+/.gradle/
+/build/
+/build/classes/java/main/
+.idea/
+out/
+
+#gradle/
+
+DATABASE/
+
+# Eclipse 관련 파일/디렉토리
+bin/
+.classpath
+.project
+.settings/
+.factorypath
+
+# 로그 파일
+logs/
+*.log
+
+nul
+
+.claude/
+
+# One-time NEIS cert export (for truststore import)
+neis.cer
+
+# Docker 환경변수 파일 (민감 정보 포함 - git에 포함하지 않음)
+.env
+.env.*
+
+# Java/Spring build artifacts
+*.class
+*.jar
+*.war
+*.ear

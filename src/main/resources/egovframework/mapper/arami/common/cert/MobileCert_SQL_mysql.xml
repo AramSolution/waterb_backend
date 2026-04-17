@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mobileCertDAO">
+	<!-- 로그인 처리를 위한 resultMap -->
+	<resultMap id="mobileResultMap" type="arami.common.cert.comm.MobileCertDTO">
+        <result column="req_seq" property="reqSeq" />
+        <result column="auth_type" property="authType" />
+        <result column="cipher_time" property="cipherTime" />
+        <result column="res_seq" property="resSeq" />
+        <result column="name" property="name" />
+        <result column="birth_date" property="birthDate" />
+        <result column="gender" property="gender" />
+        <result column="nationa_info" property="nationaInfo" />
+        <result column="dup_info" property="dupInfo" />
+        <result column="conn_info" property="connInfo" />
+        <result column="mobile_co" property="mobileCo" />
+        <result column="mobile_no" property="mobileNo" />
+        <result column="err_code" property="errCode" />
+        <result column="err_msg" property="errMsg" />
+	</resultMap>
+
+    <insert id="insertMobileCert" parameterType="arami.common.cert.comm.MobileCertDTO">
+        INSERT INTO ARTCERT ( req_seq, auth_type, cipher_time, res_seq, name, birth_date, gender, nationa_info, dup_info, conn_info, mobile_co, mobile_no, err_code, err_msg, chg_date )
+                     VALUES ( #{reqSeq}
+                            , #{authType}
+                            , #{cipherTime}
+                            , #{resSeq}
+                            , #{name}
+                            , #{birthDate}
+                            , #{gender}
+                            , #{nationaInfo}
+                            , #{dupInfo}
+                            , #{connInfo}
+                            , #{mobileCo}
+                            , #{mobileNo}
+                            , #{errCode}
+                            , #{errMsg}
+                            , NOW()
+                            )
+    </insert>
+
+</mapper>

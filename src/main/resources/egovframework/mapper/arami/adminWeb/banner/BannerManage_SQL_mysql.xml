@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="bannerManageDAO">
+
+    <select id="selectBannerListCount" parameterType="BannerListRequest" resultType="int">
+        SELECT COUNT(*)
+        FROM ARMBANR A1
+        WHERE A1.STAT_CODE = 'A'
+        <if test='userGbn != null and userGbn != ""'>
+            AND DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i') &gt;= DATE_FORMAT(A1.START_DTTM, '%Y-%m-%d %H:%i')
+            AND DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i') &lt;= DATE_FORMAT(A1.END_DTTM, '%Y-%m-%d %H:%i')
+        </if>
+        <if test='banrGb != null and banrGb != ""'>
+            AND A1.BANR_GB = #{banrGb}
+        </if>
+        <if test='searchCondition == "title" and searchKeyword != null and searchKeyword != ""'>
+            AND A1.TITLE LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+        <if test='searchCondition == "body" and searchKeyword != null and searchKeyword != ""'>
+            AND A1.BODY LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+    </select>
+
+    <select id="selectBannerList" parameterType="BannerListRequest" resultType="BannerItemResponse">
+        SELECT ROW_NUMBER() OVER (ORDER BY A1.ORDER_BY ASC) AS RNUM,
+               A1.BANR_CD,
+               A1.BANR_GB,
+               COALESCE(A1.TITLE, '') AS TITLE,
+               COALESCE(A1.LINK_GB, '') AS LINK_GB,
+               COALESCE(A1.LINK_URL, '') AS LINK_URL,
+               COALESCE((SELECT CONCAT(FILE_PATH, '/', SAVE_NM) FROM ARTFILE WHERE FILE_ID = CAST(A1.FILE_CD AS UNSIGNED) ORDER BY SEQ LIMIT 1), A1.IMG_URL, '') AS IMG_URL,
+               COALESCE((SELECT CONCAT(FILE_PATH, '/thumb/', REPLACE(SAVE_NM, CONCAT('.', FILE_EXT), CONCAT('_128.', FILE_EXT))) FROM ARTFILE WHERE FILE_ID = CAST(A1.FILE_CD AS UNSIGNED) ORDER BY SEQ LIMIT 1), A1.IMG_URL, '') AS IMG_URL1,
+               COALESCE(A1.FILE_CD, '') AS FILE_CD,
+               COALESCE(A1.WIDTH_SIZE, 0) AS WIDTH_SIZE,
+               COALESCE(A1.HEIGHT_SIZE, 0) AS HEIGHT_SIZE,
+               COALESCE(A1.POSI_X, 0) AS POSI_X,
+               COALESCE(A1.POSI_Y, 0) AS POSI_Y,
+               DATE_FORMAT(A1.START_DTTM, '%Y-%m-%d %H:%i') AS START_DTTM,
+               DATE_FORMAT(A1.END_DTTM, '%Y-%m-%d %H:%i') AS END_DTTM,
+               COALESCE(A1.ORDER_BY, 0) AS ORDER_BY,
+               A1.STAT_CODE
+        FROM ARMBANR A1
+        WHERE A1.STAT_CODE = 'A'
+        <if test='userGbn != null and userGbn != ""'>
+            AND DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i') &gt;= DATE_FORMAT(A1.START_DTTM, '%Y-%m-%d %H:%i')
+            AND DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i') &lt;= DATE_FORMAT(A1.END_DTTM, '%Y-%m-%d %H:%i')
+        </if>
+        <if test='banrGb != null and banrGb != ""'>
+            AND A1.BANR_GB = #{banrGb}
+        </if>
+        <if test='searchCondition == "title" and searchKeyword != null and searchKeyword != ""'>
+            AND A1.TITLE LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+        <if test='searchCondition == "body" and searchKeyword != null and searchKeyword != ""'>
+            AND A1.BODY LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+        ORDER BY A1.ORDER_BY ASC
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <select id="createBanrCd" resultType="string">
+        SELECT CONCAT(DATE_FORMAT(NOW(), '%Y%m'),
+                      LPAD(COALESCE(MAX(SUBSTRING(A1.BANR_CD, 7, 4)), 0) + 1, 4, '0')) AS BANR_CD
+        FROM ARMBANR A1
+        WHERE A1.BANR_CD LIKE CONCAT(DATE_FORMAT(NOW(), '%Y%m'), '%')
+    </select>
+
+    <insert id="insertBanner" parameterType="BannerSaveRequest">
+        INSERT INTO ARMBANR (
+            BANR_CD, BANR_GB, TITLE, BODY, LINK_GB, LINK_URL, IMG_URL, FILE_CD,
+            WIDTH_SIZE, HEIGHT_SIZE, POSI_X, POSI_Y,
+            START_DTTM, END_DTTM, ORDER_BY, STAT_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{banrCd}, #{banrGb}, #{title}, #{body}, #{linkGb}, #{linkUrl}, #{imgUrl}, #{fileCd},
+            #{widthSize}, #{heightSize}, #{posiX}, #{posiY},
+            #{startDttm}, #{endDttm}, #{orderBy}, #{statCode}, #{UNIQ_ID}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="selectBannerDetail" parameterType="BannerDetailRequest" resultType="BannerDetailDataResponse">
+        SELECT A1.BANR_CD,
+               COALESCE(A1.BANR_GB, '') AS BANR_GB,
+               COALESCE(A1.TITLE, '') AS TITLE,
+               COALESCE(A1.BODY, '') AS BODY,
+               COALESCE(A1.LINK_GB, '') AS LINK_GB,
+               COALESCE(A1.LINK_URL, '') AS LINK_URL,
+               COALESCE((SELECT CONCAT(FILE_PATH, '/', SAVE_NM) FROM ARTFILE WHERE FILE_ID = CAST(A1.FILE_CD AS UNSIGNED) ORDER BY SEQ LIMIT 1), A1.IMG_URL, '') AS IMG_URL,
+               COALESCE((SELECT ORGF_NM FROM ARTFILE WHERE FILE_ID = CAST(A1.FILE_CD AS UNSIGNED) ORDER BY SEQ LIMIT 1), '') AS ORGF_NM,
+               COALESCE(A1.FILE_CD, '') AS FILE_CD,
+               COALESCE(A1.WIDTH_SIZE, 0) AS WIDTH_SIZE,
+               COALESCE(A1.HEIGHT_SIZE, 0) AS HEIGHT_SIZE,
+               COALESCE(A1.POSI_X, 0) AS POSI_X,
+               COALESCE(A1.POSI_Y, 0) AS POSI_Y,
+               DATE_FORMAT(A1.START_DTTM, '%Y-%m-%d') AS START_DT,
+               DATE_FORMAT(A1.END_DTTM, '%Y-%m-%d') AS END_DT,
+               DATE_FORMAT(A1.START_DTTM, '%Y-%m-%d %H:%i') AS START_DTTM,
+               DATE_FORMAT(A1.END_DTTM, '%Y-%m-%d %H:%i') AS END_DTTM,
+               COALESCE(A1.ORDER_BY, 0) AS ORDER_BY,
+               COALESCE(A1.STAT_CODE, 'A') AS STAT_CODE
+        FROM ARMBANR A1
+        WHERE A1.BANR_CD = #{banrCd}
+    </select>
+
+    <update id="updateBanner" parameterType="BannerSaveRequest">
+        UPDATE ARMBANR
+        SET TITLE = #{title},
+            BANR_GB = #{banrGb},
+            BODY = #{body},
+            LINK_GB = #{linkGb},
+            LINK_URL = #{linkUrl},
+            IMG_URL = #{imgUrl},
+            FILE_CD = #{fileCd},
+            WIDTH_SIZE = #{widthSize},
+            HEIGHT_SIZE = #{heightSize},
+            POSI_X = #{posiX},
+            POSI_Y = #{posiY},
+            START_DTTM = #{startDttm},
+            END_DTTM = #{endDttm},
+            ORDER_BY = #{orderBy},
+            STAT_CODE = #{statCode},
+            CHG_USER_ID = #{UNIQ_ID},
+            CHG_DATE = NOW()
+        WHERE BANR_CD = #{banrCd}
+    </update>
+
+    <update id="updateBannerImage" parameterType="BannerSaveRequest">
+        UPDATE ARMBANR
+        SET FILE_CD = '',
+            IMG_URL = '',
+            CHG_USER_ID = #{UNIQ_ID},
+            CHG_DATE = NOW()
+        WHERE BANR_CD = #{banrCd}
+    </update>
+
+    <update id="deleteBanner" parameterType="BannerSaveRequest">
+        UPDATE ARMBANR
+        SET STAT_CODE = 'D',
+            FILE_CD = '',
+            IMG_URL = '',
+            CHG_USER_ID = #{UNIQ_ID},
+            CHG_DATE = NOW()
+        WHERE BANR_CD = #{banrCd}
+    </update>
+
+</mapper>

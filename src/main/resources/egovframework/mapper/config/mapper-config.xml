@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+	<!--Mybatis 설정 -->
+	<settings>
+		<!-- 전통적인 데이터베이스 컬럼명 형태인 A_COLUMN을 CamelCase형태의 자바 프로퍼티명 형태인 aColumn으로 자동으로 매핑하도록 함 -->
+		<setting name="mapUnderscoreToCamelCase" value="true"></setting>
+		<!--  파라미터에 Null 값이 있을 경우 에러 처리 -->
+		<setting name="jdbcTypeForNull" value="VARCHAR"></setting>
+	</settings>
+
+	<!-- Type Aliases 설정-->
+	<!-- NOTE: <package> 스캔은 Spring Boot fat JAR에서 MyBatis VFS가 동작하지 않아 제거.
+	           패키지 스캔은 EgovConfigAppMapper.java의 setTypeAliasesPackage()로 처리. -->
+	<typeAliases>
+		<typeAlias alias="egovMap" 			type="org.egovframe.rte.psl.dataaccess.util.EgovMap" />
+		<typeAlias alias="FileVO"			type="egovframework.com.cmm.service.FileVO" />
+		<typeAlias alias="ComDefaultCodeVO" type="egovframework.com.cmm.ComDefaultCodeVO" />
+		<typeAlias alias="comDefaultVO"		type="egovframework.com.cmm.ComDefaultVO" />
+		<typeAlias alias="userSearchVO" type = "egovframework.let.uss.umt.service.UserDefaultVO"/>
+    	<typeAlias alias="mberVO"       type = "egovframework.let.uss.umt.service.MberManageVO"/>
+		<!-- AdminWeb Member DTOs -->
+		<package name="arami.common.adminWeb.member.service.dto.request"/>
+		<package name="arami.common.adminWeb.member.service.dto.response"/>
+		<!-- AdminWeb Artprom(지원사업) DTOs -->
+		<package name="arami.adminWeb.artprom.service.dto.request"/>
+		<package name="arami.adminWeb.artprom.service.dto.response"/>
+		<!-- AdminWeb Artappm(지원사업 신청) DTOs -->
+		<package name="arami.adminWeb.artappm.service.dto.request"/>
+		<package name="arami.adminWeb.artappm.service.dto.response"/>
+		<!-- AdminWeb Artapps(공부의명수 ARTAPPS) DTOs -->
+		<package name="arami.adminWeb.artapps.service.dto.request"/>
+		<package name="arami.adminWeb.artapps.service.dto.response"/>
+		<!-- AdminWeb Artadvi(상담관리/멘토지정) DTOs -->
+		<package name="arami.adminWeb.artadvi.service.dto.request"/>
+		<package name="arami.adminWeb.artadvi.service.dto.response"/>
+		<!-- AdminWeb Banner(배너관리) DTOs -->
+		<package name="arami.adminWeb.banner.service.dto.request"/>
+		<package name="arami.adminWeb.banner.service.dto.response"/>
+		<!-- AdminWeb Artedum(가맹학원 신청) DTOs -->
+		<package name="arami.adminWeb.artedum.service.dto.request"/>
+		<package name="arami.adminWeb.artedum.service.dto.response"/>
+		<!-- AdminWeb Code(공통코드) DTOs -->
+		<package name="arami.common.adminWeb.code.service.dto.request"/>
+		<package name="arami.common.adminWeb.code.service.dto.response"/>
+		<!-- Shared Armuser(공통 사용자) DTOs -->
+		<package name="arami.shared.armuser.dto.request"/>
+		<package name="arami.shared.armuser.dto.response"/>
+		<!-- Shared Armchil(자녀관리) DTOs -->
+		<package name="arami.shared.armchil.dto.request"/>
+		<package name="arami.shared.armchil.dto.response"/>
+		<!-- Shared Proc(공통 프로시저/함수) DTOs -->
+		<package name="arami.shared.proc.dto.request"/>
+		<package name="arami.shared.proc.dto.response"/>
+		<!-- UserWeb Artprom(지원사업) DTOs -->
+		<package name="arami.userWeb.artprom.service.dto.request"/>
+		<package name="arami.userWeb.artprom.service.dto.response"/>
+		<!-- UserWeb MentorWork(멘토업무) DTOs -->
+		<package name="arami.userWeb.mentorWork.service.dto.request"/>
+		<package name="arami.userWeb.mentorWork.service.dto.response"/>
+		<!-- UserWeb OAuth DTOs -->
+		<package name="arami.userWeb.oauth.service.dto.request"/>
+		<package name="arami.userWeb.oauth.service.dto.response"/>
+		<!-- Common Auth DTOs -->
+		<package name="arami.common.auth.service.dto"/>
+	</typeAliases>
+
+</configuration>

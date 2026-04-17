@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="procManageDAO">
+
+    <!-- f_changlist: 변경 이력 조회 (프로시저). 프로시저 내 concat 컬럼에 AS change_desc 지정 시 changeDesc 매핑됨 -->
+    <resultMap id="ChanglistResultMap" type="ChanglistResponse">
+        <result column="CHG_DT" property="chgDt"/>
+        <result column="change_desc" property="changeDesc"/>
+    </resultMap>
+    <select id="callChanglist" parameterType="ChanglistRequest" resultMap="ChanglistResultMap">
+        CALL f_changlist (#{aGubun}, #{aProId}, #{aProSeq}, #{aReqEsntlId})
+    </select>
+
+    <!-- f_check: 자격 조건 확인 (함수, varchar(128) 반환). 인자: 구분, PRO_GB, 사업ID, EsntlId -->
+    <select id="selectCheck" parameterType="CheckRequest" resultType="CheckResponse">
+        SELECT f_check(#{aGubun}, #{aProGb}, #{aProId}, #{aEsntlId}) AS result
+    </select>
+
+    <!-- f_choicelist: 랜덤 신청자 선택 (프로시저) -->
+    <select id="callChoiceList" parameterType="ChoiceListRequest" resultType="ChoiceListResponse">
+        CALL f_choicelist (#{aGubun}, #{aProId}, #{aProSeq}, #{aDataCnt}, #{aRank})
+    </select>
+
+    <!-- f_choicelist: 랜덤 신청자 선택 (순위 미포함 응답) -->
+    <select id="callChoiceListNonRank" parameterType="ChoiceListRequest" resultType="ChoiceListNonRankResponse">
+        CALL f_choicelist (#{aGubun}, #{aProId}, #{aProSeq}, #{aDataCnt}, #{aRank})
+    </select>
+
+    <!-- f_selectlist01: 사업ID·기준년월별 목록 (다건). DTO: aProId, aWorkYm -->
+    <select id="callSelectList01" parameterType="SelectList01Request" resultType="SelectList01ItemResponse">
+        CALL f_selectlist01(#{aProId}, #{aWorkYm})
+    </select>
+
+    <!-- f_selectlist02: 상담일자별 상담장소/시간 목록 (space_data, pro_seq). DTO: aProId, aWorkDt -->
+    <select id="callSelectList02" parameterType="SelectList02Request" resultType="SelectList02ItemResponse">
+        CALL f_selectlist02(#{aProId}, #{aWorkDt})
+    </select>
+
+</mapper>

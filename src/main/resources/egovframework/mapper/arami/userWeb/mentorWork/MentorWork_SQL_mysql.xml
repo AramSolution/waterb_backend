@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mentorWorkDAO">
+
+    <!-- 멘토업무(mentorWork) 화면 - 정보조회 아래 목록. reqEsntlNm은 공백이 아닐 때만 조건 적용 (ARTADVI.STTUS_CODE 미사용) -->
+    <select id="selectMentorWorkAdviceList" parameterType="MentorWorkListRequest" resultType="MentorWorkAdviceItem">
+        SELECT A.REQ_ID
+             , COALESCE(A.PRO_ID, '') AS PRO_ID
+             , COALESCE(A.PRO_SEQ, '') AS PRO_SEQ
+             , (SELECT PRO_GB FROM ARTPROM WHERE ARTPROM.PRO_ID = B.PRO_ID) AS PRO_GB
+             , COALESCE(A.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+             , COALESCE(A.ADV_ESNTL_ID, '') AS ADV_ESNTL_ID
+             , COALESCE(B.P_ESNTL_ID, '') AS P_ESNTL_ID
+             , (SELECT DECRYPT(USER_NM) FROM ARMUSER WHERE B.P_ESNTL_ID = ESNTL_ID) AS P_USER_NM
+             , (SELECT FN_MASK_PHONE(COALESCE(DECRYPT(MBTLNUM), ''), 'N') FROM ARMUSER WHERE B.P_ESNTL_ID = ESNTL_ID) AS P_MBTLNUM
+             , COALESCE(B.SCHOOL_ID, '') AS SCHOOL_ID
+             , COALESCE(B.SCHOOL_GB, '') AS SCHOOL_GB
+             , COALESCE(B.SCHOOL_NM, '') AS SCHOOL_NM
+             , COALESCE(B.SCHOOL_LVL, '') AS SCHOOL_LVL
+             , CONCAT(COALESCE(B.SCHOOL_LVL, ''), '학년') AS SCHOOL_LVL_NM
+             , COALESCE(B.SCHOOL_NO, '') AS SCHOOL_NO
+             , CONCAT(COALESCE(B.SCHOOL_NO, ''), '반') AS SCHOOL_NO_NM
+             , (SELECT DECRYPT(USER_NM) FROM ARMUSER WHERE B.C_ESNTL_ID = ESNTL_ID) AS REQ_ESNTL_NM
+             <!-- , (SELECT DECRYPT(USER_NM) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID) AS REQ_ESNTL_NM -->
+             , (SELECT FN_MASK_PHONE(COALESCE(DECRYPT(MBTLNUM), ''), 'N') FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID) AS MBTLNUM
+             , (SELECT DECRYPT(ZIP) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID) AS ZIP
+             , (SELECT DECRYPT(ADRES) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID) AS ADRES
+             , (SELECT DECRYPT(DETAIL_ADRES) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID) AS DETAIL_ADRES
+             , CONCAT(
+                  (SELECT DECRYPT(ADRES) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID),
+                  ' ',
+                  (SELECT DECRYPT(DETAIL_ADRES) FROM ARMUSER WHERE B.REQ_ESNTL_ID = ESNTL_ID)
+               ) AS FULL_ADRES
+          FROM ARTADVI A
+          LEFT JOIN ARTAPPM B ON A.REQ_ID = B.REQ_ID AND A.PRO_ID = B.PRO_ID
+         WHERE A.PRO_ID = #{proId}
+           AND A.ADV_ESNTL_ID = #{advEsntlId}
+           <if test="reqEsntlNm != null and reqEsntlNm != ''">
+           AND A.REQ_ESNTL_ID IN (
+               SELECT ESNTL_ID FROM ARMUSER WHERE DECRYPT(USER_NM) LIKE CONCAT('%', #{reqEsntlNm}, '%')
+           )
+           </if>
+    </select>
+
+</mapper>

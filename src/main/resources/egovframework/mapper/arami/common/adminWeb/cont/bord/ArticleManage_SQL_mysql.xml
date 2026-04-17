@@ -1,0 +1,766 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="articleManageDAO">
+
+    <select id="selectArticleList" parameterType="egovMap" resultType="egovMap">
+    	SELECT *
+		    	FROM ( SELECT '[공지]' AS RNUM
+					     , A1.NTT_ID
+					     , A1.BBS_ID
+					     , A1.PARNTSCTT_ID
+					     , A1.ANSWER_AT
+					     <!-- , A1.ANSWER_LC -->
+					     , A1.NTT_SJ
+					     , A1.NTT_CN
+					     , COALESCE(A1.NTT_DATA1, '') AS NTT_DATA1
+					     , COALESCE(A1.NTT_DATA2, '') AS NTT_DATA2
+					     , COALESCE(A1.NTT_DATA3, '') AS NTT_DATA3
+					     , COALESCE(A1.NTT_DATA4, '') AS NTT_DATA4
+					     , COALESCE(A1.NTT_DATA5, '') AS NTT_DATA5
+					     , COALESCE(A1.NTT_DATA6, '') AS NTT_DATA6
+					     , A1.NTT_IMG_FILE_ID AS NTT_IMG_FILE_ID
+					     , A1.RDCNT
+					     , A1.NTCR_ID
+					     , A1.NTCR_NM
+					     , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+					     , A1.NOTICE_AT
+					     , A1.SECRET_AT
+					     , COALESCE(A1.ATCH_FILE_ID, '') AS ATCH_FILE_ID
+					     , DATE_FORMAT(A1.NTCR_START_DT, '%Y-%m-%d %H:%i:%s') AS NTCR_START_DT
+					     , DATE_FORMAT(A1.NTCR_END_DT  , '%Y-%m-%d %H:%i:%s') AS NTCR_END_DT
+					     <!-- , COALESCE((SELECT CONCAT(Z1.FILE_PATH, Z1.SAVE_NM)
+					                 FROM ARTFILE Z1
+					                WHERE Z1.FILE_CD = A1.ATCH_FILE_ID
+					                ORDER BY Z1.SEQ LIMIT 1), '') AS FILE_NM -->
+					     , A1.STTUS_CODE
+               , CASE WHEN COALESCE(A1.STTUS_CODE       , '') = 'A' THEN '사용' ELSE '미사용' END AS STTUS_CODE_NM
+					     , COALESCE((SELECT REPLY_YN FROM ARMBORD WHERE A1.BBS_ID = BBS_ID), 'N') AS REPLY_YN
+					     , COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID), 0) AS ANSWER_CNT
+					     , CASE
+					           WHEN COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID), 0) = '0'
+					           THEN 'Y'
+					           ELSE 'N'
+					       END AS USE_IMAGE
+					FROM ARTBBSM A1
+					WHERE A1.BBS_ID = #{bbsId}
+					  AND A1.STTUS_CODE = 'A'
+					  AND A1.NOTICE_AT = 'Y'
+					  AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+              <if test='searchCondition == "1"'>
+                AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+				      </if>
+					    <if test='searchCondition == "2"'>
+				       AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+				      </if>
+              <if test='searchCondition == "3"'>
+				       AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+				      </if>
+				      <if test='searchCondition == "4"'>
+				       AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+				      </if>
+
+					UNION ALL
+
+					SELECT CAST((T.TOTAL_COUNT - ROW_NUMBER() OVER (ORDER BY A1.PARNTSCTT_ID DESC, A1.NTT_ID) + 1) AS CHAR) AS RNUM
+					     , A1.NTT_ID
+					     , A1.BBS_ID
+					     , A1.PARNTSCTT_ID
+					     , A1.ANSWER_AT
+					     <!-- , A1.ANSWER_LC -->
+					     , A1.NTT_SJ
+					     , A1.NTT_CN
+					     , COALESCE(A1.NTT_DATA1, '') AS NTT_DATA1
+					     , COALESCE(A1.NTT_DATA2, '') AS NTT_DATA2
+					     , COALESCE(A1.NTT_DATA3, '') AS NTT_DATA3
+					     , COALESCE(A1.NTT_DATA4, '') AS NTT_DATA4
+					     , COALESCE(A1.NTT_DATA5, '') AS NTT_DATA5
+					     , COALESCE(A1.NTT_DATA6, '') AS NTT_DATA6
+					     , A1.NTT_IMG_FILE_ID AS NTT_IMG_FILE_ID
+					     , A1.RDCNT
+					     , A1.NTCR_ID
+					     , A1.NTCR_NM
+					     , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+					     , A1.NOTICE_AT
+					     , A1.SECRET_AT
+					     , COALESCE(A1.ATCH_FILE_ID, '') AS ATCH_FILE_ID
+					     , DATE_FORMAT(A1.NTCR_START_DT, '%Y-%m-%d %H:%i:%s') AS NTCR_START_DT
+					     , DATE_FORMAT(A1.NTCR_END_DT  , '%Y-%m-%d %H:%i:%s') AS NTCR_END_DT
+					     <!-- , COALESCE((SELECT CONCAT(Z1.FILE_PATH, Z1.SAVE_NM)
+					                 FROM ARTFILE Z1
+					                WHERE Z1.FILE_CD = A1.ATCH_FILE_ID
+					                ORDER BY Z1.SEQ LIMIT 1), '') AS FILE_NM -->
+					     , A1.STTUS_CODE
+               , CASE WHEN COALESCE(A1.STTUS_CODE       , '') = 'A' THEN '사용' ELSE '미사용' END AS STTUS_CODE_NM
+					     , COALESCE((SELECT REPLY_YN FROM ARMBORD WHERE A1.BBS_ID = BBS_ID), 'N') AS REPLY_YN
+					     , COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID), 0) AS ANSWER_CNT
+					     , CASE
+					           WHEN COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID), 0) = '0'
+					           THEN 'Y'
+					           ELSE 'N'
+					       END AS USE_IMAGE
+					FROM ARTBBSM A1
+					CROSS JOIN (
+					    SELECT COUNT(*) AS TOTAL_COUNT
+					    FROM ARTBBSM
+					    WHERE BBS_ID = #{bbsId}
+					      AND STTUS_CODE = 'A'
+					      AND NOTICE_AT != 'Y'
+					      AND NOW() BETWEEN NTCR_START_DT AND NTCR_END_DT
+					      <if test='searchCondition == "1"'>
+					       AND (NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+					      </if>
+					      <if test='searchCondition == "2"'>
+					       AND NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+					      </if>
+					      <if test='searchCondition == "3"'>
+					       AND NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+					      </if>
+					      <if test='searchCondition == "4"'>
+					       AND NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+					      </if>
+					) T
+					WHERE A1.BBS_ID = #{bbsId}
+					  AND A1.STTUS_CODE = 'A'
+					  AND A1.NOTICE_AT != 'Y'
+					  AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+					  <if test='searchCondition == "1"'>
+              AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+				    </if>
+					  <if test='searchCondition == "2"'>
+				      AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+            <if test='searchCondition == "3"'>
+				      AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+				    <if test='searchCondition == "4"'>
+				      AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+	    	) A0
+		LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <select id="selectArticleListCount" parameterType="egovMap" resultType="int">
+        SELECT COUNT(1)
+			FROM (
+			    SELECT '[공지]' AS RNUM
+			             , A1.NTT_ID
+			    FROM ARTBBSM A1
+			    WHERE A1.BBS_ID = #{bbsId}
+			      AND A1.STTUS_CODE = 'A'
+			      AND A1.NOTICE_AT = 'Y'
+			      AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+			      <if test='searchCondition == "1"'>
+              AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+				    </if>
+					  <if test='searchCondition == "2"'>
+				      AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+            <if test='searchCondition == "3"'>
+				      AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+				    <if test='searchCondition == "4"'>
+				      AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+
+			    UNION ALL
+
+			    SELECT '일반' AS RNUM
+			    		, A1.NTT_ID
+			    FROM ARTBBSM A1
+			    CROSS JOIN (
+			        SELECT COUNT(*) AS TOTAL_COUNT
+			        FROM ARTBBSM
+			        WHERE BBS_ID = #{bbsId}
+			          AND STTUS_CODE = 'A'
+			          AND NOTICE_AT != 'Y'
+			          AND NOW() BETWEEN NTCR_START_DT AND NTCR_END_DT
+			          <if test='searchCondition == "1"'>
+                  AND (NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                  OR NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                  OR NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+                </if>
+                <if test='searchCondition == "2"'>
+                  AND NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                </if>
+                <if test='searchCondition == "3"'>
+                  AND NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                </if>
+                <if test='searchCondition == "4"'>
+                  AND NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+                </if>
+			    ) T
+			    WHERE A1.BBS_ID = #{bbsId}
+			      AND A1.STTUS_CODE = 'A'
+			      AND A1.NOTICE_AT != 'Y'
+			      AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+			      <if test='searchCondition == "1"'>
+              AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+				    </if>
+					  <if test='searchCondition == "2"'>
+				      AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+            <if test='searchCondition == "3"'>
+				      AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+				    <if test='searchCondition == "4"'>
+				      AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+				    </if>
+			) A
+
+    </select>
+
+    <!-- 사용자웹 묻고답하기용: 본문만 조회(ANSWER_AT='N'), 답변개수(ANSWER_CNT), 작성자(NTCR_NM), 공지여부(NOTICE_AT), 비밀글여부(SECRET_AT) 포함 -->
+    <select id="selectArticleListParentOnly" parameterType="egovMap" resultType="egovMap">
+        SELECT NTT_ID, BBS_ID, NTT_SJ, NTCR_DT, ANSWER_CNT, NOTICE_AT, NTCR_NM, SECRET_AT
+        FROM (
+            SELECT A1.NTT_ID
+                 , A1.BBS_ID
+                 , A1.NTT_SJ
+                 , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+                 , COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID AND ANSWER_AT = 'Y'), 0) AS ANSWER_CNT
+                 , A1.NOTICE_AT
+                 , A1.NTCR_NM
+                 , COALESCE(A1.SECRET_AT, 'N') AS SECRET_AT
+                 , 0 AS SORT_ORD
+            FROM ARTBBSM A1
+            WHERE A1.BBS_ID = #{bbsId}
+              AND A1.STTUS_CODE = 'A'
+              AND A1.ANSWER_AT = 'N'
+              AND A1.NOTICE_AT = 'Y'
+              AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+              <if test='searchCondition == "1"'>
+                AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+              </if>
+              <if test='searchCondition == "2"'>
+                AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+              <if test='searchCondition == "3"'>
+                AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+              <if test='searchCondition == "4"'>
+                AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+
+            UNION ALL
+
+            SELECT A1.NTT_ID
+                 , A1.BBS_ID
+                 , A1.NTT_SJ
+                 , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+                 , COALESCE((SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID AND ANSWER_AT = 'Y'), 0) AS ANSWER_CNT
+                 , A1.NOTICE_AT
+                 , A1.NTCR_NM
+                 , COALESCE(A1.SECRET_AT, 'N') AS SECRET_AT
+                 , 1 AS SORT_ORD
+            FROM ARTBBSM A1
+            WHERE A1.BBS_ID = #{bbsId}
+              AND A1.STTUS_CODE = 'A'
+              AND A1.ANSWER_AT = 'N'
+              AND A1.NOTICE_AT != 'Y'
+              AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+              <if test='searchCondition == "1"'>
+                AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+              </if>
+              <if test='searchCondition == "2"'>
+                AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+              <if test='searchCondition == "3"'>
+                AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+              <if test='searchCondition == "4"'>
+                AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+              </if>
+        ) A0
+        ORDER BY SORT_ORD, NTT_ID DESC
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <select id="selectArticleListParentOnlyCount" parameterType="egovMap" resultType="int">
+        SELECT COUNT(1)
+        FROM ARTBBSM A1
+        WHERE A1.BBS_ID = #{bbsId}
+          AND A1.STTUS_CODE = 'A'
+          AND A1.ANSWER_AT = 'N'
+          AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+          <if test='searchCondition == "1"'>
+            AND (A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+				  </if>
+					<if test='searchCondition == "2"'>
+				    AND A1.NTT_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+          <if test='searchCondition == "3"'>
+				    AND A1.NTCR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test='searchCondition == "4"'>
+				    AND A1.NTT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+    </select>
+
+    <select id="selectArticleDetail" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID
+             , A1.BBS_ID
+             , COALESCE(( SELECT BBS_NM FROM ARMBORD WHERE BBS_ID = A1.BBS_ID) , '') AS BBS_NM
+             , A1.PARNTSCTT_ID
+             , A1.ANSWER_AT
+             , A1.NTT_SJ
+             , A1.NTT_CN
+             , COALESCE(A1.NTT_DATA1, '') AS NTT_DATA1
+             , COALESCE(A1.NTT_DATA2, '') AS NTT_DATA2
+             , COALESCE(A1.NTT_DATA3, '') AS NTT_DATA3
+             , COALESCE(A1.NTT_DATA4, '') AS NTT_DATA4
+             , COALESCE(A1.NTT_DATA5, '') AS NTT_DATA5
+             , COALESCE(A1.NTT_DATA6, '') AS NTT_DATA6
+             , COALESCE(A1.NTT_IMG_FILE_ID, '') AS NTT_IMG_FILE_ID
+             , A1.RDCNT
+             , A1.NTCR_ID
+             , A1.NTCR_NM
+             , CASE WHEN B2.USER_SE = 'USR' THEN '관리자' ELSE FN_MASK_NAME(A1.NTCR_NM) END AS MASK_NTCR_NM
+             , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d')          AS NTCR_DT
+             , A1.NOTICE_AT
+             , A1.SECRET_AT
+             <!-- , A1.PASSWORD -->
+             , COALESCE(A1.ATCH_FILE_ID, '')                      AS ATCH_FILE_ID
+             , DATE_FORMAT(A1.NTCR_START_DT, '%Y-%m-%d') AS NTCR_START_DT
+             , DATE_FORMAT(A1.NTCR_END_DT  , '%Y-%m-%d') AS NTCR_END_DT
+             , COALESCE(( SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID) , 0) AS ANSWER_CNT
+             <!-- , A1.ANSWER_LC 
+             , A1.YOUTUBE_LINK1-->
+          FROM ARTBBSM A1
+          LEFT JOIN ARMUSER B2
+          ON A1.NTCR_ID = B2.ESNTL_ID
+         WHERE A1.BBS_ID = #{bbsId}
+           AND A1.NTT_ID = #{nttId}
+    </select>
+
+    <!-- 사용자웹 상세 전용: ANSWER_CNT는 답글(ANSWER_AT='Y')만 카운트, 관리자용 selectArticleDetail은 변경 없음 -->
+    <select id="selectArticleDetailForUser" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID
+             , A1.BBS_ID
+             , COALESCE(( SELECT BBS_NM FROM ARMBORD WHERE BBS_ID = A1.BBS_ID) , '') AS BBS_NM
+             , A1.PARNTSCTT_ID
+             , A1.ANSWER_AT
+             , A1.NTT_SJ
+             , A1.NTT_CN
+             , COALESCE(A1.NTT_IMG_FILE_ID, '') AS NTT_IMG_FILE_ID
+             , COALESCE(A1.NTT_DATA1, '') AS NTT_DATA1
+             , COALESCE(A1.NTT_DATA2, '') AS NTT_DATA2
+             , COALESCE(A1.NTT_DATA3, '') AS NTT_DATA3
+             , COALESCE(A1.NTT_DATA4, '') AS NTT_DATA4
+             , COALESCE(A1.NTT_DATA5, '') AS NTT_DATA5
+             , COALESCE(A1.NTT_DATA6, '') AS NTT_DATA6
+             , COALESCE(A1.NTT_DATA7, '') AS NTT_DATA7
+             , COALESCE(A1.NTT_DATA8, '') AS NTT_DATA8
+             , COALESCE(A1.NTT_DATA9, '') AS NTT_DATA9
+             , COALESCE(A1.NTT_DATA10, '') AS NTT_DATA10
+             , A1.RDCNT
+             , A1.NTCR_ID
+             , A1.NTCR_NM
+             , CASE WHEN B2.USER_SE = 'USR' THEN '관리자' ELSE FN_MASK_NAME(A1.NTCR_NM) END AS MASK_NTCR_NM
+             , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d')          AS NTCR_DT
+             , A1.NOTICE_AT
+             , A1.SECRET_AT
+             , COALESCE(A1.ATCH_FILE_ID, '')                      AS ATCH_FILE_ID
+             , DATE_FORMAT(A1.NTCR_START_DT, '%Y-%m-%d') AS NTCR_START_DT
+             , DATE_FORMAT(A1.NTCR_END_DT  , '%Y-%m-%d') AS NTCR_END_DT
+             , COALESCE(( SELECT COUNT(*) FROM ARTBBSM WHERE PARNTSCTT_ID = A1.NTT_ID AND ANSWER_AT = 'Y') , 0) AS ANSWER_CNT
+          FROM ARTBBSM A1
+          LEFT JOIN ARMUSER B2
+          ON A1.NTCR_ID = B2.ESNTL_ID
+         WHERE A1.BBS_ID = #{bbsId}
+           AND A1.NTT_ID = #{nttId}
+    </select>
+
+    <!-- 묻고답하기 본문의 답글 1건 조회 (사용자웹 상세에서 관리자 답변 표시용) -->
+    <select id="selectReplyByParntscttId" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_CN   AS REPLY_NTT_CN
+             , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d %H:%i') AS REPLY_NTCR_DT
+             , A1.NTCR_NM AS REPLY_NTCR_NM
+          FROM ARTBBSM A1
+         WHERE A1.BBS_ID = #{bbsId}
+           AND A1.PARNTSCTT_ID = #{nttId}
+           AND A1.ANSWER_AT = 'Y'
+         ORDER BY A1.NTT_ID ASC
+         LIMIT 1
+    </select>
+
+    <!-- 이전글: 현재가 공지일 때 = 공지 블록에서 바로 위( NTT_ID 더 작은 공지 ) -->
+    <select id="selectPrevArticle" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID AS nttId, A1.NTT_SJ AS nttSj
+          FROM ARTBBSM A1
+         WHERE A1.BBS_ID = #{bbsId}
+           AND A1.STTUS_CODE = 'A'
+           AND A1.NOTICE_AT = 'Y'
+           AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+           AND A1.NTT_ID &lt; #{nttId}
+         ORDER BY A1.NTT_ID DESC
+         LIMIT 1
+    </select>
+
+    <!-- 이전글: 현재가 일반글일 때 = 목록에서 바로 위. 1) 일반글 중 NTT_ID 더 큰 것(바로 위) 우선, 없으면 2) 공지 블록 마지막 -->
+    <select id="selectPrevArticleWhenNonNotice" parameterType="egovMap" resultType="egovMap">
+        SELECT nttId, nttSj FROM (
+            (SELECT A1.NTT_ID AS nttId, A1.NTT_SJ AS nttSj, 0 AS ord
+               FROM ARTBBSM A1
+              WHERE A1.BBS_ID = #{bbsId}
+                AND A1.STTUS_CODE = 'A'
+                AND A1.NOTICE_AT = 'N'
+                AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+                AND A1.NTT_ID &gt; #{nttId}
+              ORDER BY A1.NTT_ID ASC
+              LIMIT 1)
+            UNION ALL
+            (SELECT A2.NTT_ID AS nttId, A2.NTT_SJ AS nttSj, 1 AS ord
+               FROM ARTBBSM A2
+              WHERE A2.BBS_ID = #{bbsId}
+                AND A2.STTUS_CODE = 'A'
+                AND A2.NOTICE_AT = 'Y'
+                AND NOW() BETWEEN A2.NTCR_START_DT AND A2.NTCR_END_DT
+              ORDER BY A2.NTT_ID DESC
+              LIMIT 1)
+        ) U
+        ORDER BY ord
+        LIMIT 1
+    </select>
+
+    <!-- 목록 순서 기준 다음글 = 목록에서 아래 = 더 오래됨 -->
+    <select id="selectNextArticle" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID AS nttId, A1.NTT_SJ AS nttSj
+          FROM ARTBBSM A1
+         WHERE A1.BBS_ID = #{bbsId}
+           AND A1.STTUS_CODE = 'A'
+           AND NOW() BETWEEN A1.NTCR_START_DT AND A1.NTCR_END_DT
+           AND (
+               (A1.NOTICE_AT = 'N' AND (COALESCE(#{noticeAt}, 'N') = 'Y'))
+               OR (COALESCE(A1.NOTICE_AT, 'N') = COALESCE(#{noticeAt}, 'N') AND A1.NTT_ID &lt; #{nttId})
+           )
+         ORDER BY A1.NOTICE_AT ASC, A1.NTT_ID DESC
+         LIMIT 1
+    </select>
+
+    <update id="updateViewCount" parameterType="egovMap">
+        UPDATE ARTBBSM
+           SET RDCNT = RDCNT + 1
+         WHERE BBS_ID = #{bbsId}
+           AND NTT_ID = #{nttId}
+    </update>
+
+    <insert id="insertArticle" parameterType="egovMap">
+		INSERT INTO ARTBBSM ( NTT_ID
+                            , BBS_ID
+                            , PARNTSCTT_ID
+                            , ANSWER_AT
+                            , NTT_SJ
+                            , NTT_CN
+                            , NTT_DATA1
+                            , NTT_DATA2
+                            , NTT_DATA3
+                            , NTT_DATA4
+                            , NTT_DATA5
+                            , NTT_DATA6
+                            , NTT_IMG_FILE_ID
+                            , NTT_CN_FILE_ID
+                            , RDCNT
+                            , NTCR_ID
+                            , NTCR_NM
+                            , NTCR_DT
+                            , NTCR_START_DT
+                            , NTCR_END_DT
+                            <if test="newPw != null and newPw != ''">, PASSWORD</if>
+                            , NOTICE_AT
+                            , SECRET_AT
+                            , ATCH_FILE_ID
+                            , STTUS_CODE
+                            , CHG_USER_ID
+                            , CRT_DATE
+                            , CHG_DATE
+                   ) VALUES ( #{nttId}
+                            , #{bbsId}
+                            , #{parntscttId}
+                            , COALESCE(#{answerAt}, 'N')
+                            , #{nttSj}
+                            , #{nttCn}
+                            , #{nttData1}
+                            , #{nttData2}
+                            , #{nttData3}
+                            , #{nttData4}
+                            , #{nttData5}
+                            , #{nttData6}
+                            , #{nttImgFileId}
+                            , #{nttCnFileId}
+                            , 0
+                            , #{UNIQ_ID}
+                            , #{ntcrNm}
+                            , NOW()
+                            , #{ntcrStartDt}
+                            , #{ntcrEndDt}
+                            <if test="newPw != null and newPw != ''">, #{newPw}</if>
+                            , COALESCE(#{noticeAt}, 'N')
+                            , COALESCE(#{secretAt}, 'N')
+                            , #{atchFileId}
+                            , 'A'
+                            , #{UNIQ_ID}
+                            , NOW()
+                            , NOW()
+        )
+    </insert>
+
+	<insert id="insertArticle2" parameterType="egovMap">
+		INSERT INTO ARTBBSM ( NTT_ID
+                            , BBS_ID
+                            , PARNTSCTT_ID
+                            , ANSWER_AT
+                            , NTT_SJ
+                            , NTT_CN
+                            , NTT_DATA1
+                            , NTT_DATA2
+                            , NTT_DATA3
+                            , NTT_DATA4
+                            , NTT_DATA5
+                            , NTT_DATA6
+                            , NTT_IMG_FILE_ID
+                            , NTT_CN_FILE_ID
+                            , RDCNT
+                            , NTCR_ID
+                            , NTCR_NM
+                            , NTCR_DT
+                            , NTCR_START_DT
+                            , NTCR_END_DT
+                            , PASSWORD
+                            , NOTICE_AT
+                            , SECRET_AT
+                            , ATCH_FILE_ID
+                            , STTUS_CODE
+                            , CHG_USER_ID
+                            , CRT_DATE
+                            , CHG_DATE
+                   ) VALUES ( #{nttId}
+                            , #{bbsId}
+                            , #{parntscttId}
+                            , COALESCE(#{answerAt}, 'N')
+                            , #{nttSj}
+                            , #{nttCn}
+                            , #{nttData1}
+                            , #{nttData2}
+                            , #{nttData3}
+                            , #{nttData4}
+                            , #{nttData5}
+                            , #{nttData6}
+                            , #{nttImgFileId}
+                            , #{nttCnFileId}
+                            , 0
+                            , #{UNIQ_ID}
+                            , #{ntcrNm}
+                            , NOW()
+                            , #{ntcrStartDt}
+                            , #{ntcrEndDt}
+                            , #{newPw}
+                            , COALESCE(#{noticeAt}, 'N')
+                            , COALESCE(#{secretAt}, 'N')
+                            , #{atchFileId}
+                            , 'A'
+                            , #{UNIQ_ID}
+                            , NOW()
+                            , NOW()
+        )
+    </insert>
+
+    <insert id="replyArticle" parameterType="egovMap">
+	    <selectKey keyProperty="resultMap" resultType="egovMap" order="BEFORE">
+        SELECT
+            <!-- COALESCE(PASSWORD, '') AS newPw, -->
+            COALESCE(NTCR_START_DT, '') AS ntcrStartDt,
+            COALESCE(NTCR_END_DT, '') AS ntcrEndDt
+        FROM ARTBBSM
+        WHERE BBS_ID = #{bbsId}
+          AND PARNTSCTT_ID = #{parntscttId}
+    </selectKey>
+			INSERT INTO ARTBBSM ( NTT_ID
+                            , BBS_ID
+                            , PARNTSCTT_ID
+                            , ANSWER_AT
+                            , NTT_SJ
+                            , NTT_CN
+                            , NTT_CN_FILE_ID
+                            , RDCNT
+                            , NTCR_ID
+                            , NTCR_NM
+                            , NTCR_DT
+                            , NTCR_START_DT
+                            , NTCR_END_DT
+                            <!-- , PASSWORD -->
+                            , NOTICE_AT
+                            , SECRET_AT
+                            , ATCH_FILE_ID
+                            , STTUS_CODE
+                            , CHG_USER_ID
+                            , CRT_DATE
+                            , CHG_DATE
+                   ) VALUES ( #{nttId}
+                            , #{bbsId}
+                            , #{parntscttId}
+                            , COALESCE(#{answerAt}, 'N')
+                            , #{nttSj}
+                            , #{nttCn}
+                            , #{nttCnFileId}
+                            , 0
+                            , #{UNIQ_ID}
+                            , #{ntcrNm}
+                            , NOW()
+                            , #{resultMap.ntcrStartDt}
+                            , #{resultMap.ntcrEndDt}
+                            <!-- , #{resultMap.newPw} -->
+                            , COALESCE(#{noticeAt}, 'N')
+                            , COALESCE(#{secretAt}, 'N')
+                            , #{atchFileId}
+                            , 'A'
+                            , #{UNIQ_ID}
+                            , NOW()
+                            , NOW()
+        )
+    </insert>
+
+    <update id="updateArticle" parameterType="egovMap">
+        UPDATE ARTBBSM
+           SET NTT_SJ        = #{nttSj}
+             , NTT_CN        = #{nttCn}
+             <if test="nttData1 != null">
+             , NTT_DATA1     = #{nttData1}
+             </if>
+             <if test="nttData2 != null">
+             , NTT_DATA2     = #{nttData2}
+             </if>
+             <if test="nttData3 != null">
+             , NTT_DATA3     = #{nttData3}
+             </if>
+             <if test="nttData4 != null">
+             , NTT_DATA4     = #{nttData4}
+             </if>
+             , NTT_DATA5     = #{nttData5}
+             , NTT_DATA6     = #{nttData6}
+             <choose>
+               <when test="nttImgFileId == null">
+               </when>
+               <when test="nttImgFileId != null and nttImgFileId.toString().trim().equals('')">
+             , NTT_IMG_FILE_ID = NULL
+               </when>
+               <otherwise>
+             , NTT_IMG_FILE_ID   = #{nttImgFileId}
+               </otherwise>
+             </choose>
+             , NTCR_START_DT = #{ntcrStartDt}
+             , NTCR_END_DT   = #{ntcrEndDt}
+             , NOTICE_AT     = COALESCE(#{noticeAt}, 'N')
+             <if test="secretAt != null and secretAt != ''">
+             , SECRET_AT     = #{secretAt}
+             </if>
+             , NTT_CN_FILE_ID  = #{nttCnFileId}
+             , ATCH_FILE_ID  = #{atchFileId}
+             <if test="answerAt != null and answerAt != ''">
+             , ANSWER_AT     = #{answerAt}
+             </if>
+             <!--, YOUTUBE_LINK1 = #{youtubeLink1}-->
+             , STTUS_CODE = #{sttusCode}
+             <if test="newPw != null and newPw != ''">
+             , PASSWORD    = #{newPw}
+             </if>
+             , CHG_USER_ID   = #{UNIQ_ID}
+             , CHG_DATE      = NOW()
+         WHERE BBS_ID = #{bbsId}
+           AND NTT_ID = #{nttId}
+    </update>
+
+    <update id="deleteArticle" parameterType="egovMap">
+        UPDATE ARTBBSM
+           SET STTUS_CODE    = 'D'
+             , CHG_USER_ID   = #{UNIQ_ID}
+             , CHG_DATE      = NOW()
+         WHERE BBS_ID = #{bbsId}
+           AND NTT_ID = #{nttId}
+    </update>
+
+    <select id="confirmPasswd" parameterType="egovMap" resultType="int">
+	    SELECT COUNT(1) AS LIST_CNT
+		  FROM ARTBBSM A1
+		 WHERE A1.BBS_ID = #{bbsId}
+		   AND A1.NTT_ID = #{nttId}
+		   AND PASSWORD  = #{password}
+    </select>
+
+    <!-- 게시글 번호 채번 -->
+    <select id="getNextNttId" parameterType="egovMap" resultType="int">
+	    SELECT COALESCE((MAX(A1.NTT_ID)), 0) +1
+		  FROM ARTBBSM A1
+    </select>
+
+    <update id="deleteArticleMultiFile" parameterType="egovMap">
+        UPDATE ARTBBSM
+           SET CHG_USER_ID  = #{UNIQ_ID}
+             <if test='type == "atchFileId"  '>
+             , ATCH_FILE_ID    	= NULL
+             </if>
+             <if test='type == "nttCnFileId" '>
+             , NTT_CN_FILE_ID   = NULL
+             </if>
+             , CHG_DATE = now()
+         WHERE BBS_ID           = #{bbsId}
+           AND NTT_ID           = #{nttId}
+    </update>
+
+    <select id="selectPreTotalBbsList" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID
+             , A1.BBS_ID
+             , B1.BBS_NM
+             , A1.NTT_SJ
+             , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+          FROM ARTBBSM A1 INNER JOIN ARMBORD B1
+                             ON A1.BBS_ID = B1.BBS_ID
+         WHERE NOW() <![CDATA[>=]]> A1.NTCR_START_DT
+           AND NOW() <![CDATA[<=]]> A1.NTCR_END_DT
+           AND A1.STTUS_CODE = 'A'
+           AND A1.ANSWER_AT = 'N'
+           AND A1.BBS_ID IN
+           <foreach collection="bbsList" item="bbsList" open="(" close=")" separator=",">
+               #{bbsList}
+           </foreach>
+         ORDER BY A1.NTCR_DT DESC
+         LIMIT #{topLimit}
+    </select>
+
+    <select id="selectPreViewBbsList" parameterType="egovMap" resultType="egovMap">
+        SELECT A1.NTT_ID
+             , A1.BBS_ID
+             , B1.BBS_NM
+             , A1.NTT_SJ
+             , COALESCE((SELECT CONCAT(Z1.FILE_PATH, Z1.SAVE_NM)
+                          FROM ARTFILE Z1
+                         WHERE Z1.FILE_CD = A1.ATCH_FILE_ID
+                         ORDER BY Z1.SEQ LIMIT 1), '')         AS FILE_NM
+             , DATE_FORMAT(A1.NTCR_DT, '%Y-%m-%d') AS NTCR_DT
+          FROM ARTBBSM A1 INNER JOIN ARMBORD B1
+                             ON A1.BBS_ID = B1.BBS_ID
+         WHERE NOW() <![CDATA[>=]]> A1.NTCR_START_DT
+           AND NOW() <![CDATA[<=]]> A1.NTCR_END_DT
+           AND A1.STTUS_CODE = 'A'
+           AND A1.ANSWER_AT  = 'N'
+           AND A1.BBS_ID     = #{bbsId}
+         ORDER BY A1.NTCR_DT DESC
+         LIMIT #{topLimit}
+    </select>
+
+</mapper>

@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  공부의명수(ARTAPPS) 전용 매퍼.
+  지원사업(ARTPROM) 목록/상세/등록 등은 artprom/ArtpromManage_SQL_mysql.xml (artpromManageDAO) 사용.
+  지원사업 신청(ARTAPPM 일반)은 artappm/ArtappmManage_SQL_mysql.xml (artappmManageDAO) 사용.
+-->
+<mapper namespace="artappsManageDAO">
+
+    <!-- 공부의명수 신청ID(REQ_ID) 채번: ARTAPPM + ARTAPPS 전체 MAX 기반 -->
+    <select id="getNextReqIdForArtapps" parameterType="egovMap" resultType="string">
+        SELECT CONCAT(
+            'REQ_',
+            LPAD(
+                COALESCE(MAX(CAST(SUBSTRING(T.REQ_ID, 5, 16) AS UNSIGNED)), 0) + 1,
+                16,
+                '0'
+            )
+        ) AS REQ_ID
+          FROM (
+                SELECT REQ_ID FROM ARTAPPM
+                UNION ALL
+                SELECT REQ_ID FROM ARTAPPS
+          ) T
+    </select>
+
+    <!-- 해당 사업(PRO_ID)의 ARTAPPS 신청 건수 (접수·선정 완료만) -->
+    <select id="countArtappsByProIdProSeq" parameterType="ArtappsInsertRequest" resultType="int">
+        SELECT COUNT(*)
+          FROM ARTAPPS
+         WHERE PRO_ID = #{proId}
+           AND STTUS_CODE IN ('03', '04')
+    </select>
+
+    <!-- 공부의명수 신청 등록: ARTAPPM + ARTAPPS -->
+    <insert id="insertArtapps" parameterType="ArtappsInsertRequest">
+        START TRANSACTION;
+
+        INSERT INTO ARTAPPM (
+            REQ_ID, REQ_PRO_SEQ,
+            PRO_ID, PRO_SEQ, REQ_ESNTL_ID, C_ESNTL_ID, PRO_TYPE, P_ESNTL_ID, HEAD_NM, P_USER_NM, MBTLNUM, BRTHDY, P_IHIDNUM, C_IHIDNUM, CERT_YN, CRTFC_DN_VALUE,
+            SCHOOL_ID, SCHOOL_GB, SCHOOL_NM, SCHOOL_LVL, SCHOOL_NO, PAY_BANK_CODE, PAY_BANK, HOLDER_NM,
+            REQ_PART, PLAY_PART, REQ_OBJ, REQ_PLAY, REQ_PLAN, MCHIL_YN, MCHIL_NM, REQ_DESC, FILE_ID,
+            RESULT_GB, REQ_DT, APRR_DT, CHG_DT, STOP_DT, REA_DESC, WORK_DT, STTUS_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{reqId},
+            COALESCE(#{reqProSeq}, #{proSeq}, '0'),
+            #{proId},
+            COALESCE(#{proSeq}, '0'),
+            #{reqEsntlId},
+            #{cEsntlId},
+            #{proType},
+            #{pEsntlId},
+            ENCRYPT(#{headNm}),
+            ENCRYPT(#{pUserNm}),
+            ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+            #{brthdy},
+            ENCRYPT(#{pIhidnum}),
+            ENCRYPT(#{cIhidnum}),
+            COALESCE(#{certYn}, 'N'),
+            #{crtfcDnValue},
+            #{schoolId},
+            #{schoolGb},
+            #{schoolNm},
+            COALESCE(#{schoolLvl}, 0),
+            COALESCE(#{schoolNo}, 0),
+            #{payBankCode},
+            #{payBank},
+            #{holderNm},
+            #{reqPart},
+            #{playPart},
+            #{reqObj},
+            #{reqPlay},
+            #{reqPlan},
+            COALESCE(#{mchilYn}, 'N'),
+            #{mchilNm},
+            #{reqDesc},
+            #{fileId},
+            #{resultGb},
+            CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE #{reqDt} END,
+            CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE #{aprrDt} END,
+            NOW(),
+            CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE #{stopDt} END,
+            #{reaDesc},
+            <choose>
+                <when test="workDt != null and workDt != ''">#{workDt}</when>
+                <otherwise>NULL</otherwise>
+            </choose>,
+            #{sttusCode},
+            #{UNIQ_ID},
+            NOW(),
+            NOW()
+        );
+
+        INSERT INTO ARTAPPS (
+            REQ_ID, PRO_ID, PRO_GBN, PRO_GBN_ETC, REQ_SUB, JOIN_CNT, BEF_JOIN, JOIN_TIME, JOIN_TIME_CON,
+            S_UNDER, S_TARGET, S_CHAR, S_REASON, S_EXPECT, S_APPR, S_COMM,
+            AGREE1_YN, AGREE2_YN, AGREE3_YN, STTUS_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{reqAppsId},
+            #{proId},
+            #{proGbn},
+            COALESCE(#{proGbnEtc}, ''),
+            #{reqSub},
+            #{joinCnt},
+            #{befJoin},
+            #{joinTime},
+            #{joinTimeCon},
+            COALESCE(#{sUnder}, ''),
+            COALESCE(#{sTarget}, ''),
+            COALESCE(#{sChar}, ''),
+            #{sReason},
+            #{sExpect},
+            #{sAppr},
+            COALESCE(#{sComm}, ''),
+            COALESCE(#{agree1Yn}, 'N'),
+            COALESCE(#{agree2Yn}, 'N'),
+            COALESCE(#{agree3Yn}, 'N'),
+            #{sttusCode},
+            #{UNIQ_ID},
+            NOW(),
+            NOW()
+        );
+
+        COMMIT;
+    </insert>
+
+    <!-- 공부의명수 신청 수정: ARTAPPM + ARTAPPS 동시 업데이트 -->
+    <update id="updateArtapps" parameterType="ArtappsUpdateRequest">
+        START TRANSACTION;
+
+        UPDATE ARTAPPM
+           SET PRO_ID = #{proId},
+               PRO_SEQ = COALESCE(#{proSeq}, '0'),
+               REQ_ESNTL_ID = #{reqEsntlId},
+               C_ESNTL_ID = #{cEsntlId},
+               PRO_TYPE = #{proType},
+               P_ESNTL_ID = #{pEsntlId},
+               HEAD_NM = ENCRYPT(#{headNm}),
+               P_USER_NM = ENCRYPT(#{pUserNm}),
+               MBTLNUM = ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+               BRTHDY = #{brthdy},
+               P_IHIDNUM = ENCRYPT(#{pIhidnum}),
+               C_IHIDNUM = ENCRYPT(#{cIhidnum}),
+               CERT_YN = COALESCE(#{certYn}, 'N'),
+               CRTFC_DN_VALUE = #{crtfcDnValue},
+               SCHOOL_ID = #{schoolId},
+               SCHOOL_GB = #{schoolGb},
+               SCHOOL_NM = #{schoolNm},
+               SCHOOL_LVL = COALESCE(#{schoolLvl}, 0),
+               SCHOOL_NO = COALESCE(#{schoolNo}, 0),
+               PAY_BANK_CODE = #{payBankCode},
+               PAY_BANK = #{payBank},
+               HOLDER_NM = #{holderNm},
+               REQ_PART = #{reqPart},
+               PLAY_PART = #{playPart},
+               REQ_OBJ = #{reqObj},
+               REQ_PLAY = #{reqPlay},
+               REQ_PLAN = #{reqPlan},
+               MCHIL_YN = COALESCE(#{mchilYn}, 'N'),
+               MCHIL_NM = #{mchilNm},
+               REQ_DESC = #{reqDesc},
+               FILE_ID = #{fileId},
+               RESULT_GB = #{resultGb},
+               REQ_DT = CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE REQ_DT END,
+               APRR_DT = CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE APRR_DT END,
+               CHG_DT = NOW(),
+               STOP_DT = CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE STOP_DT END,
+               REA_DESC = #{reaDesc},
+               WORK_DT =
+               <choose>
+                   <when test="workDt != null and workDt != ''">#{workDt}</when>
+                   <otherwise>NULL</otherwise>
+               </choose>,
+               STTUS_CODE = #{sttusCode},
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId};
+
+        UPDATE ARTAPPS
+           SET PRO_ID = #{proId},
+               PRO_GBN = #{proGbn},
+               PRO_GBN_ETC = COALESCE(#{proGbnEtc}, ''),
+               REQ_SUB = #{reqSub},
+               JOIN_CNT = #{joinCnt},
+               BEF_JOIN = #{befJoin},
+               JOIN_TIME = #{joinTime},
+               JOIN_TIME_CON = #{joinTimeCon},
+               S_UNDER = COALESCE(#{sUnder}, ''),
+               S_TARGET = COALESCE(#{sTarget}, ''),
+               S_CHAR = COALESCE(#{sChar}, ''),
+               S_REASON = #{sReason},
+               S_EXPECT = #{sExpect},
+               S_APPR = #{sAppr},
+               S_COMM = COALESCE(#{sComm}, ''),
+               AGREE1_YN = COALESCE(#{agree1Yn}, 'N'),
+               AGREE2_YN = COALESCE(#{agree2Yn}, 'N'),
+               AGREE3_YN = COALESCE(#{agree3Yn}, 'N'),
+               STTUS_CODE = #{sttusCode},
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId};
+
+        COMMIT;
+    </update>
+
+    <update id="updateArtappsRowByReqId" parameterType="ArtappmUpdateRequest">
+        UPDATE ARTAPPS
+           SET PRO_GBN = #{proGbn},
+               PRO_GBN_ETC = COALESCE(#{proGbnEtc}, ''),
+               REQ_SUB = #{reqSub},
+               JOIN_CNT = #{joinCnt},
+               BEF_JOIN = #{befJoin},
+               JOIN_TIME = #{joinTime},
+               JOIN_TIME_CON = #{joinTimeCon},
+               S_UNDER = COALESCE(#{sUnder}, ''),
+               S_TARGET = COALESCE(#{sTarget}, ''),
+               S_CHAR = COALESCE(#{sChar}, ''),
+               S_REASON = #{sReason},
+               S_EXPECT = #{sExpect},
+               S_APPR = #{sAppr},
+               S_COMM = COALESCE(#{sComm}, ''),
+               AGREE1_YN = COALESCE(#{agree1Yn}, 'N'),
+               AGREE2_YN = COALESCE(#{agree2Yn}, 'N'),
+               AGREE3_YN = COALESCE(#{agree3Yn}, 'N'),
+               STTUS_CODE = #{sttusCode},
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- REQ_ID 기준 상태 코드 변경: ARTAPPM + ARTAPPS 동시 반영 -->
+    <update id="updateArtappsSttusCodeByReqId" parameterType="map">
+        START TRANSACTION;
+
+        UPDATE ARTAPPM
+           SET STTUS_CODE = #{sttusCode},
+               CHG_DT = NOW(),
+               CHG_DATE = NOW(),
+               REQ_DT = CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE REQ_DT END,
+               APRR_DT = CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE APRR_DT END,
+               STOP_DT = CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE STOP_DT END,
+               REA_DESC = CASE WHEN #{sttusCode} = '11' THEN #{reaDesc} ELSE REA_DESC END
+         WHERE REQ_ID = #{reqId};
+
+        UPDATE ARTAPPS
+           SET STTUS_CODE = #{sttusCode},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId};
+
+        COMMIT;
+    </update>
+
+    <!-- REQ_ID 1건 삭제: ARTAPPS → ARTAPPM (FK 고려). ARTAPPS.REQ_ID는 등록 시 reqAppsId(미입력 시 reqId와 동일). -->
+    <update id="deleteArtappsApplicationsByReqId" parameterType="ArtappsDeleteByReqIdRequest">
+        START TRANSACTION;
+
+        DELETE FROM ARTAPPS
+         WHERE REQ_ID = #{reqId};
+
+        DELETE FROM ARTAPPM
+         WHERE REQ_ID = #{reqId};
+
+        COMMIT;
+    </update>
+
+    <!-- 공부의 명수 신청목록 건수: ARTAPPM INNER JOIN ARTAPPS ON REQ_ID -->
+    <select id="countArtappsApplicationList" parameterType="ArtappsApplicationListRequest" resultType="int">
+        SELECT COUNT(*)
+          FROM ARTAPPM M
+    INNER JOIN ARTAPPS S
+            ON M.REQ_ID = S.REQ_ID
+          LEFT JOIN ARMUSER U
+            ON M.C_ESNTL_ID = U.ESNTL_ID
+         WHERE M.PRO_ID = #{searchProId}
+        <if test="searchUserNm != null and searchUserNm != ''">
+           AND DECRYPT(U.USER_NM) LIKE CONCAT('%', #{searchUserNm}, '%')
+        </if>
+    </select>
+
+    <!-- 공부의 명수 신청목록: ARTAPPM INNER JOIN ARTAPPS ON REQ_ID. resultType + mapUnderscoreToCamelCase → ArtappsApplicationListRowDTO -->
+    <select id="selectArtappsApplicationList" parameterType="ArtappsApplicationListRequest" resultType="ArtappsApplicationListRowDTO">
+        SELECT *
+          FROM (
+                SELECT ROW_NUMBER() OVER (ORDER BY M.REQ_DT DESC, M.REQ_ID DESC) AS RNUM
+                     , COALESCE(M.REQ_ID, '') AS REQ_ID
+                     , COALESCE(M.PRO_ID, '') AS PRO_ID
+                     , COALESCE(M.PRO_SEQ, '0') AS PRO_SEQ
+                     , COALESCE(M.REQ_PRO_SEQ, '0') AS REQ_PRO_SEQ
+                     , COALESCE(M.STTUS_CODE, '') AS STTUS_CODE
+                     , CASE
+                           WHEN M.STTUS_CODE = '01' THEN '임시저장'
+                           WHEN M.STTUS_CODE = '02' THEN '신청'
+                           WHEN M.STTUS_CODE = '03' THEN '승인'
+                           WHEN M.STTUS_CODE = '04' THEN '완료'
+                           WHEN M.STTUS_CODE = '11' THEN '반려'
+                           WHEN M.STTUS_CODE = '12' THEN '중단'
+                           WHEN M.STTUS_CODE = '99' THEN '취소'
+                           ELSE ''
+                       END AS STTUS_CODE_NM
+                     , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+                     , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS CMBTLNUM
+                     , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.USR_TELNO), ''), 'N'), '') AS USR_TELNO
+                     , COALESCE(M.SCHOOL_NM, '') AS SCHOOL_NM
+                     , CASE
+                           WHEN M.SCHOOL_LVL IS NOT NULL AND M.SCHOOL_NO IS NOT NULL
+                           THEN CONCAT(M.SCHOOL_LVL, '학년 ', M.SCHOOL_NO, '반')
+                           WHEN M.SCHOOL_LVL IS NOT NULL
+                           THEN CONCAT(M.SCHOOL_LVL, '학년')
+                           WHEN M.SCHOOL_NO IS NOT NULL
+                           THEN CONCAT(M.SCHOOL_NO, '반')
+                           ELSE ''
+                       END AS SCHOOL_CLASS
+                     , COALESCE(DECRYPT(M.P_USER_NM), '') AS P_USER_NM
+                     , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(M.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+                     , COALESCE(
+                           (
+                               SELECT CODE_NM
+                                 FROM LETTCCMMNDETAILCODE
+                                WHERE CODE_ID = 'EDR006'
+                                  AND USE_AT = 'Y'
+                                  AND CODE = S.PRO_GBN
+                                LIMIT 1
+                           ),
+                           CASE
+                               WHEN S.PRO_GBN = '01' THEN '기초생활수급'
+                               WHEN S.PRO_GBN = '02' THEN '법적차상위계층'
+                               WHEN S.PRO_GBN = '03' THEN '다자녀가정'
+                               WHEN S.PRO_GBN = '04' THEN '다문화가정'
+                               WHEN S.PRO_GBN = '05' THEN '일반'
+                               WHEN S.PRO_GBN = '06' THEN '기타'
+                               ELSE S.PRO_GBN
+                           END,
+                           ''
+                       ) AS PRO_GBN
+                     , COALESCE(S.PRO_GBN_ETC, '') AS PRO_GBN_ETC
+                     , COALESCE(
+                           (
+                               SELECT CODE_NM
+                                 FROM LETTCCMMNDETAILCODE
+                                WHERE CODE_ID = 'EDR006'
+                                  AND USE_AT = 'Y'
+                                  AND CODE = S.REQ_SUB
+                                LIMIT 1
+                           ),
+                           S.REQ_SUB,
+                           ''
+                       ) AS REQ_SUB
+                     , COALESCE(
+                           (
+                               SELECT CODE_NM
+                                 FROM LETTCCMMNDETAILCODE
+                                WHERE CODE_ID = 'EDR006'
+                                  AND USE_AT = 'Y'
+                                  AND CODE = S.JOIN_CNT
+                                LIMIT 1
+                           ),
+                           S.JOIN_CNT,
+                           ''
+                       ) AS JOIN_CNT
+                     , COALESCE(
+                           (
+                               SELECT CODE_NM
+                                 FROM LETTCCMMNDETAILCODE
+                                WHERE CODE_ID = 'EDR006'
+                                  AND USE_AT = 'Y'
+                                  AND CODE = S.BEF_JOIN
+                                LIMIT 1
+                           ),
+                           S.BEF_JOIN,
+                           ''
+                       ) AS BEF_JOIN
+                     , COALESCE(S.JOIN_TIME, '') AS JOIN_TIME
+                     , COALESCE(S.JOIN_TIME_CON, '') AS JOIN_TIME_CON
+                     , COALESCE(S.S_UNDER, '') AS S_UNDER
+                     , COALESCE(S.S_TARGET, '') AS S_TARGET
+                     , COALESCE(S.S_CHAR, '') AS S_CHAR
+                     , COALESCE(S.S_REASON, '') AS S_REASON
+                     , COALESCE(S.S_EXPECT, '') AS S_EXPECT
+                     , COALESCE(S.S_APPR, '') AS S_APPR
+                     , COALESCE(S.S_COMM, '') AS S_COMM
+                     , M.REQ_DT
+                  FROM ARTAPPM M
+            INNER JOIN ARTAPPS S
+                    ON M.REQ_ID = S.REQ_ID
+                  LEFT JOIN ARMUSER U
+                    ON M.C_ESNTL_ID = U.ESNTL_ID
+                 WHERE M.PRO_ID = #{searchProId}
+        <if test="searchUserNm != null and searchUserNm != ''">
+                   AND DECRYPT(U.USER_NM) LIKE CONCAT('%', #{searchUserNm}, '%')
+        </if>
+               ) T
+        <bind name="endRow" value="startIndex + lengthPage"/>
+         WHERE RNUM > #{startIndex}
+           AND RNUM &lt;= #{endRow}
+    </select>
+
+</mapper>

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="AramiFileManageDAO">
+
+	<resultMap id="fileList" type="arami.common.files.service.FileDTO">
+		<result property="fileId"   column="FILE_ID" />
+		<result property="seq"      column="SEQ" />
+		<result property="saveGb"   column="SAVE_GB" />
+		<result property="filePath" column="FILE_PATH" />
+		<result property="orgfNm"   column="ORGF_NM" />
+		<result property="saveNm"   column="SAVE_NM" />
+		<result property="fileExt"  column="FILE_EXT" />
+		<result property="fileType" column="FILE_TYPE" />
+		<result property="fileSize" column="FILE_SIZE" />
+		<result property="tagNm"    column="TAG_NM" />
+		<result property="fileDesc" column="FILE_DESC" />
+		<result property="sttusCode" column="STTUS_CODE" />
+	</resultMap>
+
+	<insert id="insertFileInfo" parameterType="arami.common.files.service.FileDTO">
+		INSERT INTO ARTFILE ( FILE_ID
+			                , SEQ
+							, SAVE_GB
+							, FILE_PATH
+							, ORGF_NM
+							, SAVE_NM
+							, FILE_EXT
+							, FILE_TYPE
+							, FILE_SIZE
+							, TAG_NM
+							, FILE_DESC
+							, UPLOAD_DTTM
+							, STTUS_CODE
+							, CHG_USER_ID
+							, CRT_DATE
+							, CHG_DATE
+		           ) VALUES ( #{fileId}
+		                    , #{seq}
+                            , #{saveGb}
+                            , #{filePath}
+                            , #{orgfNm}
+                            , #{saveNm}
+                            , #{fileExt}
+                            , #{fileType}
+                            , #{fileSize}
+                            , #{tagNm}
+                            , #{fileDesc}
+                            , COALESCE(#{uploadDttm}, NOW())
+                            , 'A'
+                            , COALESCE(#{UNIQ_ID}, '')
+                            , NOW()
+                            , NOW()
+		);
+	</insert>
+
+	<select id="selectFileMaxSeq" parameterType="long" resultType="int">
+		SELECT COALESCE(MAX(A1.SEQ), 0)
+		  FROM ARTFILE A1
+		 WHERE A1.FILE_ID = #{fileId}
+	</select>
+
+	<select id="selectFileListByFileId" parameterType="long" resultMap="fileList">
+		SELECT A1.FILE_ID
+		     , A1.SEQ
+		     , A1.SAVE_GB
+		     , A1.FILE_PATH
+		     , A1.ORGF_NM
+		     , A1.SAVE_NM
+		     , A1.FILE_EXT
+		     , A1.FILE_TYPE
+		     , A1.FILE_SIZE
+		     , A1.TAG_NM
+		     , A1.FILE_DESC
+		     , A1.STTUS_CODE
+		  FROM ARTFILE A1
+		 WHERE A1.FILE_ID = #{fileId}
+		   AND A1.STTUS_CODE = 'A'
+		 ORDER BY A1.SEQ
+	</select>
+
+	<delete id="deleteFile" parameterType="arami.common.files.service.FileDTO">
+		DELETE FROM ARTFILE
+		 WHERE FILE_ID = #{fileId}
+		   AND SEQ = #{seq}
+	</delete>
+
+	<delete id="deleteFileGroup" parameterType="long">
+		DELETE FROM ARTFILE
+		 WHERE FILE_ID = #{_parameter}
+	</delete>
+
+	<update id="updateFileForReplace" parameterType="arami.common.files.service.FileDTO">
+		UPDATE ARTFILE
+		   SET SAVE_GB = #{saveGb}
+		     , FILE_PATH = #{filePath}
+		     , ORGF_NM = #{orgfNm}
+		     , SAVE_NM = #{saveNm}
+		     , FILE_EXT = #{fileExt}
+		     , FILE_TYPE = #{fileType}
+		     , FILE_SIZE = #{fileSize}
+		     , FILE_DESC = #{fileDesc}
+		     , UPLOAD_DTTM = COALESCE(#{uploadDttm}, NOW())
+		     , CHG_DATE = NOW()
+		 WHERE FILE_ID = #{fileId}
+		   AND SEQ = #{seq}
+	</update>
+
+	<update id="updateFileMeta" parameterType="arami.common.files.service.FileDTO">
+		UPDATE ARTFILE
+		   SET FILE_DESC = #{fileDesc}
+		     , UPLOAD_DTTM = COALESCE(#{uploadDttm}, NOW())
+		     , CHG_DATE = NOW()
+		 WHERE FILE_ID = #{fileId}
+		   AND SEQ = #{seq}
+	</update>
+
+	<!-- 동일 그룹 내 순번만 변경 (재정렬 시 FROM→TO 단계 적용) -->
+	<update id="updateFileSeq" parameterType="map">
+		UPDATE ARTFILE
+		   SET SEQ = #{toSeq}
+		     , CHG_DATE = NOW()
+		 WHERE FILE_ID = #{fileId}
+		   AND SEQ = #{fromSeq}
+	</update>
+
+</mapper>

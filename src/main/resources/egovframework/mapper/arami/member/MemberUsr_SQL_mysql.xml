@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="memberUsrDAO">
+
+	<!-- 일반반 회원 조회 -->
+	<select id="selectUserMemberList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM ( SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+				, COALESCE( A2.ESNTL_ID          , '' )  AS ESNTL_ID
+				, COALESCE( A2.USER_ID         , '' )  AS USER_ID
+				, COALESCE( A2.USER_NM         , '' )  AS USER_NM
+				, COALESCE( A2.EMAIL_ADRES       , '' )  AS EMAIL_ADRES
+				, COALESCE( A2.USR_TELNO       , '' )  AS USR_TELNO
+				, COALESCE( A2.MBTLNUM       , '' )  AS mbtlnum
+				, COALESCE( A2.MBER_STTUS       , '' )  AS MBER_STTUS
+				, CASE A2.MBER_STTUS WHEN 'A' THEN '대기'
+											WHEN 'P' THEN '사용'
+											WHEN 'D' THEN '탈퇴'
+											ELSE A2.MBER_STTUS
+				END AS MBER_STTUS_NM
+				, COALESCE(DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') , ''   ) AS SBSCRB_DE
+				, COALESCE(DATE_FORMAT(A2.SECSN_DE, '%Y-%m-%d') , ''   ) AS SECSN_DE
+				, COALESCE( IF(LOCK_AT='Y', '잠금', '해제')        , '해제') AS LOCK_AT
+				, A2.USER_SE 
+			FROM ARMUSER A2
+		         WHERE 1=1
+		           AND A2.USER_SE = 'GNR'
+				   <if test='searchCondition == "1"'>
+					AND A2.USER_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+					</if>
+					<if test='searchCondition == "2"'>
+					AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+					</if>
+					<if test='searchCondition == "3"'>
+					AND A2.MBTLNUM LIKE CONCAT('%', #{searchKeyword}, '%')
+					</if>
+					<if test="joGunMberSta != null and joGunMberSta != ''">
+					 AND A2.MBER_STTUS = #{joGunMberSta}
+					</if>
+		       ) A1
+		 LIMIT #{lengthPage} OFFSET #{startIndex}
+			
+</select>
+
+<select id="selectUserMemberListCount" parameterType="egovMap" resultType="int">
+	SELECT COUNT(1)
+	FROM ( SELECT A2.ESNTL_ID
+			FROM ARMUSER A2
+		   WHERE 1=1
+		   AND A2.USER_SE = 'GNR'
+		   <if test='searchCondition == "1"'>
+			AND A2.USER_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+			</if>
+			<if test='searchCondition == "2"'>
+			AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+			</if>
+			<if test='searchCondition == "3"'>
+			AND A2.MBTLNUM LIKE CONCAT('%', #{searchKeyword}, '%')
+			</if>
+			<if test="joGunMberSta != null and joGunMberSta != ''">
+			 AND A2.MBER_STTUS = #{joGunMberSta}
+			</if>
+		 ) A1
+</select>
+
+<select id="checkMemberId" parameterType="egovMap" resultType="String">
+	SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+	  FROM ARMUSER
+	 WHERE USER_ID = #{userId}
+</select>
+
+<select id="checkMemberId2" parameterType="egovMap" resultType="String">
+	SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+	  FROM ARMUSER
+	 WHERE USER_ID = #{userId}
+	   AND ESNTL_ID != #{esntlId}
+</select>
+
+<!-- (AJAX / CRUD / INSERT) : 회원 권한 부여 -->
+<insert id="insertAdminRollAjax" parameterType="egovMap">
+	INSERT INTO lettnemplyrscrtyestbs ( SCRTY_DTRMN_TRGET_ID
+									  , MBER_TY_CODE
+									  , AUTHOR_CODE)
+							   VALUES ( #{esntlId}
+									  , #{mbrTypeCd}
+									  , #{authCode}
+									  )
+</insert>
+
+<!-- (AJAX / CRUD / INSERT) : 회원 등록 -->
+<insert id="insertMemberAjax" parameterType="egovMap">
+	INSERT INTO ARMUSER ( ESNTL_ID
+								 , USER_SE
+								 , USER_GBN
+								, USER_ID
+								, password
+								, USER_NM
+								, USR_TELNO
+								, MBTLNUM
+								, EMAIL_ADRES
+								, EMAIL_APP_PASSWORD
+								, MBER_STTUS
+								<if test='mberSttus == "D"'>
+								, SECSN_DE
+								</if>
+								, SBSCRB_DE
+								, CHG_LAST_DT
+								, MEMBER_TYPE_CD
+								, EMAIL_ADRES_ETC
+								, COMP_ID
+								, INCHARGE_YN
+					   ) VALUES ( #{esntlId}
+								   , #{userSe}
+								   , #{userGbn}
+								, #{userId}
+								, #{newPw}
+								, #{userNm}
+								, REPLACE( #{usrTelno}, '-', '' )
+								, REPLACE( #{mbtlnum}, '-', '' )
+								, #{emailAdres}
+								, #{emailAppPassword}
+								, #{mberSttus}
+								<if test='mberSttus == "D"'>
+								, NOW()
+								</if>
+								, NOW()
+								, NOW()
+								, #{memberTypeCd}
+								, #{emailAdresEtc}
+								, #{compId}
+								, #{inchargeYn}
+								)
+</insert>
+
+</mapper>

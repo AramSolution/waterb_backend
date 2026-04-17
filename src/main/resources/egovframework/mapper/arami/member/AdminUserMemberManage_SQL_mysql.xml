@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="adminUserMemberManageDAO">
+
+	<!-- (AJAX / DATATABLE / 리스트 ) : 관리자회원 리스트조회 -->
+	<select id="selectAdminUserMemberList" parameterType="MemberListRequest" resultType="MemberDTO">
+		SELECT *
+		  FROM ( SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+		  			  , COALESCE( A2.ESNTL_ID          , '' )  AS ESNTL_ID
+		  			  , COALESCE( A2.USER_ID         , '' )  AS USER_ID
+		  			  , COALESCE( DECRYPT(A2.USER_NM)         , '' )  AS USER_NM
+		  			  , COALESCE( DECRYPT(A2.EMAIL_ADRES)       , '' )  AS EMAIL_ADRES
+		  			  , COALESCE( DECRYPT(A2.USR_TELNO)       , '' )  AS USR_TELNO
+		  			  , COALESCE( FN_MASK_PHONE(DECRYPT(A2.MBTLNUM),'N')       , '' )  AS mbtlnum
+		              , COALESCE( A2.MBER_STTUS       , '' )  AS MBER_STTUS
+		              , CASE A2.MBER_STTUS WHEN 'A' THEN '대기'
+		                                          WHEN 'P' THEN '사용'
+		                                          WHEN 'D' THEN '탈퇴'
+		                                          ELSE A2.MBER_STTUS
+		                 END AS MBER_STTUS_NM
+		              , COALESCE(DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') , ''   ) AS SBSCRB_DE
+		              , COALESCE(DATE_FORMAT(A2.SECSN_DE, '%Y-%m-%d') , ''   ) AS SECSN_DE
+		              , COALESCE( IF(LOCK_AT='Y', '잠금', '해제')        , '해제') AS LOCK_AT
+					, A2.USER_SE 
+		          FROM ARMUSER A2
+		         WHERE 1=1
+		           AND A2.USER_SE = 'USR'
+		           <if test='searchCondition == "1"'>
+		           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+		           </if>
+		           <if test='searchCondition == "2"'>
+		           AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+		           </if>
+		           <if test='searchCondition == "3"'>
+		           AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+		           </if>
+		           <if test="joGunMberSta != null and joGunMberSta != ''">
+					AND A2.MBER_STTUS = #{joGunMberSta}
+		       	   </if>
+		           <!-- 테이블 필터 조건 추가 -->
+		           <if test="filterUserId != null and filterUserId != ''">
+					AND A2.USER_ID LIKE CONCAT('%', #{filterUserId}, '%')
+		       	   </if>
+		           <if test="filterUserNm != null and filterUserNm != ''">
+					AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{filterUserNm}, '%')
+		       	   </if>
+		           <if test="filterEmailAdres != null and filterEmailAdres != ''">
+					AND DECRYPT(A2.EMAIL_ADRES) LIKE CONCAT('%', #{filterEmailAdres}, '%')
+		       	   </if>
+		           <if test="filterSbscrbDe != null and filterSbscrbDe != ''">
+					AND DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') = #{filterSbscrbDe}
+		       	   </if>
+		           <if test="filterMberSttus != null and filterMberSttus != ''">
+					AND A2.MBER_STTUS = #{filterMberSttus}
+		       	   </if>
+		       ) A1
+		 LIMIT #{lengthPage} OFFSET #{startIndex}
+	</select>
+
+	<!-- (AJAX / DATATABLE / 카운트 ) : 관리자회원 카운트조회 -->
+	<select id="selectAdminUserMemberListCount" parameterType="MemberListRequest" resultType="int">
+		SELECT COUNT(1)
+		  FROM ( SELECT A2.ESNTL_ID
+		          FROM ARMUSER A2
+				  WHERE 1=1
+				  AND A2.USER_SE = 'USR'
+				  <if test='searchCondition == "1"'>
+				  AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test='searchCondition == "2"'>
+				  AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test='searchCondition == "3"'>
+				  AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test="joGunMberSta != null and joGunMberSta != ''">
+				   AND A2.MBER_STTUS = #{joGunMberSta}
+					 </if>
+				  <!-- 테이블 필터 조건 추가 -->
+				  <if test="filterUserId != null and filterUserId != ''">
+				   AND A2.USER_ID LIKE CONCAT('%', #{filterUserId}, '%')
+					 </if>
+				  <if test="filterUserNm != null and filterUserNm != ''">
+				   AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{filterUserNm}, '%')
+					 </if>
+				  <if test="filterEmailAdres != null and filterEmailAdres != ''">
+				   AND DECRYPT(A2.EMAIL_ADRES) LIKE CONCAT('%', #{filterEmailAdres}, '%')
+					 </if>
+				  <if test="filterSbscrbDe != null and filterSbscrbDe != ''">
+				   AND DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') = #{filterSbscrbDe}
+					 </if>
+				  <if test="filterMberSttus != null and filterMberSttus != ''">
+				   AND A2.MBER_STTUS = #{filterMberSttus}
+					 </if>
+		       ) A1
+	</select>
+
+	<!-- (AJAX / DATATABLE / 리스트 ) : 관리자회원 엑셀 리스트조회 -->
+	<select id="selectAdminUserMemberExcelList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM ( SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+		  			  , COALESCE( A2.ESNTL_ID          , '' )  AS ESNTL_ID
+		  			  , COALESCE( A2.USER_ID         , '' )  AS USER_ID
+		  			  , COALESCE( DECRYPT(A2.USER_NM)         , '' )  AS USER_NM
+		  			  , COALESCE( DECRYPT(A2.EMAIL_ADRES)       , '' )  AS EMAIL_ADRES
+		  			  , COALESCE( DECRYPT(A2.USR_TELNO)       , '' )  AS USR_TELNO
+		  			  , COALESCE( FN_MASK_PHONE(DECRYPT(A2.MBTLNUM),'N')       , '' )  AS mbtlnum
+		              , COALESCE( A2.MBER_STTUS       , '' )  AS MBER_STTUS
+		              , CASE A2.MBER_STTUS WHEN 'A' THEN '대기'
+		                                          WHEN 'P' THEN '사용'
+		                                          WHEN 'D' THEN '탈퇴'
+		                                          ELSE A2.MBER_STTUS
+		                 END AS MBER_STTUS_NM
+		              , COALESCE(DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') , ''   ) AS SBSCRB_DE
+		              , COALESCE(DATE_FORMAT(A2.SECSN_DE, '%Y-%m-%d') , ''   ) AS SECSN_DE
+		              , COALESCE( IF(LOCK_AT='Y', '잠금', '해제')        , '해제') AS LOCK_AT
+					, A2.USER_SE 
+		          FROM ARMUSER A2
+				  WHERE 1=1
+				  AND A2.USER_SE = 'USR'
+				  <if test='searchCondition == "1"'>
+				  AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test='searchCondition == "2"'>
+				  AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test='searchCondition == "3"'>
+				  AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+				  </if>
+				  <if test="joGunMberSta != null and joGunMberSta != ''">
+				   AND A2.MBER_STTUS = #{joGunMberSta}
+					 </if>
+				  <!-- 테이블 필터 조건 추가 -->
+				  <if test="filterUserId != null and filterUserId != ''">
+				   AND A2.USER_ID LIKE CONCAT('%', #{filterUserId}, '%')
+					 </if>
+				  <if test="filterUserNm != null and filterUserNm != ''">
+				   AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{filterUserNm}, '%')
+					 </if>
+				  <if test="filterEmailAdres != null and filterEmailAdres != ''">
+				   AND DECRYPT(A2.EMAIL_ADRES) LIKE CONCAT('%', #{filterEmailAdres}, '%')
+					 </if>
+				  <if test="filterSbscrbDe != null and filterSbscrbDe != ''">
+				   AND DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d') = #{filterSbscrbDe}
+					 </if>
+				  <if test="filterMberSttus != null and filterMberSttus != ''">
+				   AND A2.MBER_STTUS = #{filterMberSttus}
+					 </if>
+		       ) A1
+	</select>
+
+	<!-- (AJAX / CRUD / INSERT) : 회원 등록 -->
+	<insert id="insertAdminMemberAjax" parameterType="MemberInsertRequest">
+		INSERT INTO ARMUSER ( ESNTL_ID
+		 							, USER_SE
+		                            , USER_ID
+		                            , password
+		                            , USER_NM
+		                            <!-- , IHIDNUM 
+		                            , FXNUM-->
+		                            , USR_TELNO
+		                            , MBTLNUM
+		                            , EMAIL_ADRES
+		                            <!-- , EMPL_NO -->
+		                            , MBER_STTUS
+		                            <if test='mberSttus == "D"'>
+		                            , SECSN_DE
+		                            </if>
+		                            , SBSCRB_DE
+		                            , CHG_LAST_DT
+		                            , GROUP_ID
+		                   ) VALUES ( #{esntlId}
+		                   			, #{userSe}
+		                            , #{userId}
+		                            , #{newPw}
+		                            , ENCRYPT(#{userNm})
+		                            <!-- , REPLACE( #{ihidnum}, '-', '' ) 
+		                            , #{fxnum}-->
+		                            , ENCRYPT(REPLACE( #{usrTelno}, '-', '' ))
+		                            , ENCRYPT(REPLACE( #{mbtlnum}, '-', '' ))
+		                            , ENCRYPT(#{emailAdres})
+		                            <!-- , #{emplNo} -->
+		                            , #{mberSttus}
+		                            <if test='mberSttus == "D"'>
+		                            , NOW()
+		                            </if>
+		                            <choose>
+									    <when test="sbscrbDe != null and sbscrbDe != ''">
+									      , #{sbscrbDe}
+									    </when>
+									    <otherwise>
+									      , NULL
+									    </otherwise>
+									  </choose>
+		                            , NOW()
+		                            , #{groupId}
+		                            )
+	</insert>
+	
+	<!-- (AJAX / CRUD / INSERT) : 권한 등록 -->
+	<insert id="insertAdminRollAjax" parameterType="egovMap">
+		INSERT INTO LETTNEMPLYRSCRTYESTBS ( SCRTY_DTRMN_TRGET_ID
+		                                  , MBER_TY_CODE
+		                                  , AUTHOR_CODE)
+		                           VALUES ( #{esntlId}
+		                                  , #{mbrTypeCd}
+		                                  , #{authCode}
+		                                  )
+	</insert>
+
+
+	<!-- 학위정보,경력정보 seq 채번 -->
+	<select id="getArmWorkSeq" parameterType="egovMap" resultType="int">
+		select coalesce(max(SEQ), 0)+1 as SEQ
+		  FROM ARMWORK
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND WORK_GBN = #{workGbn}
+	</select>
+
+	<!-- (AJAX / CRUD / INSERT) : 학위정보 등록 -->
+	<insert id="insertDegreeInfo" parameterType="egovMap">
+		INSERT INTO ARMWORK ( ESNTL_ID
+		 							, WORK_GBN
+		                            , SEQ
+		                            , START_DATE
+		                            , END_DATE
+		                            , WORK_NM
+		                            , DEGREE
+		                            , CHG_USER_ID
+									, CRT_DATE
+									, CHG_DATE
+		                   ) VALUES ( #{esntlId}
+		                   			, #{workGbn}
+		                            , #{seq}
+		                            , DATE_FORMAT(#{degreeStartDate}, '%Y%m%d')
+		                            , DATE_FORMAT(#{degreeEndDate}, '%Y%m%d')
+		                            , #{degreeWorkNm}
+		                            , #{degree}
+		                            , #{UNIQ_ID}
+				                    , NOW()
+				                    , NOW()
+		                            )
+	</insert>
+
+	<!-- (AJAX / CRUD / INSERT) : 자격증정보 등록 -->
+	<insert id="insertLicenceInfo" parameterType="egovMap">
+		INSERT INTO ARMLICE ( ESNTL_ID
+		                            , SEQ
+		                            , GET_DATE
+		                            , LICE_NM
+		                            , LICE_NO
+		                            , COMP_NM
+		                            , CHG_USER_ID
+									, CRT_DATE
+									, CHG_DATE
+		                   ) VALUES ( #{esntlId}
+		                            , #{seq}
+		                            , DATE_FORMAT(#{getDate}, '%Y%m%d')
+		                            , #{liceNm}
+		                            , #{liceNo}
+		                            , #{compNm}
+		                            , #{UNIQ_ID}
+				                    , NOW()
+				                    , NOW()
+		                            )
+	</insert>
+
+	<!-- (AJAX / CRUD / INSERT) : 경력정보 등록 -->
+	<insert id="insertCareerInfo" parameterType="egovMap">
+		INSERT INTO ARMWORK ( ESNTL_ID
+		 							, WORK_GBN
+		                            , SEQ
+		                            , START_DATE
+		                            , END_DATE
+		                            , WORK_NM
+		                            , POSITION
+		                            , WORK_DESC
+		                            , CHG_USER_ID
+									, CRT_DATE
+									, CHG_DATE
+		                   ) VALUES ( #{esntlId}
+		                   			, #{workGbn}
+		                            , #{seq}
+		                            , DATE_FORMAT(#{careerStartDate}, '%Y%m%d')
+		                            , DATE_FORMAT(#{careerEndDate}, '%Y%m%d')
+		                            , #{careerWorkNm}
+		                            , #{position}
+		                            , #{workDesc}
+		                            , #{UNIQ_ID}
+				                    , NOW()
+				                    , NOW()
+		                            )
+	</insert>
+
+	<!-- 학위정보 전체 삭제 -->
+    <delete id="deleteArmworkList" parameterType="egovMap">
+		DELETE
+		  FROM ARMWORK
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND WORK_GBN = #{workGbn}
+    </delete>
+
+    <!-- 학위정보 선택 삭제 -->
+    <delete id="deleteArmworkInfo" parameterType="egovMap">
+		DELETE
+		  FROM ARMWORK
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND WORK_GBN = #{workGbn}
+		   AND SEQ = #{seq}
+    </delete>
+
+    <!-- 자격증정보 전체 삭제 -->
+    <delete id="deleteLicenceList" parameterType="egovMap">
+		DELETE
+		  FROM ARMLICE
+		 WHERE ESNTL_ID = #{esntlId}
+    </delete>
+
+    <!-- 자격증정보 선택 삭제 -->
+    <delete id="deleteLicenceInfo" parameterType="egovMap">
+		DELETE
+		  FROM ARMLICE
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND SEQ = #{seq}
+    </delete>
+
+    <!-- 학위정보 최대 seq 조회 -->
+	<select id="getArmLiceSeq" parameterType="egovMap" resultType="int">
+		select coalesce(max(SEQ), 0)+1 as SEQ
+		  FROM ARMLICE
+		 WHERE ESNTL_ID = #{esntlId}
+	</select>
+
+	<!-- (AJAX / DETAIL ) : 회원 상세조회 -->
+	<select id="selectAdminUserMemberDetail" parameterType="MemberDetailRequest" resultType="MemberDTO">
+		 SELECT A1.ESNTL_ID
+			  , COALESCE( A1.USER_ID 	   , '' ) AS USER_ID
+			  , COALESCE( DECRYPT(A1.USER_NM)           , '' ) AS USER_NM
+		      , COALESCE( DECRYPT(A1.EMAIL_ADRES)      , '' ) AS EMAIL_ADRES
+			  , COALESCE( DECRYPT(A1.USR_TELNO)   , '' ) AS USR_TELNO
+			  , COALESCE( FN_MASK_PHONE(DECRYPT(A1.MBTLNUM),'N')   , '' ) AS MBTLNUM
+		      , COALESCE( A1.MBER_STTUS        , '' ) AS MBER_STTUS
+		      , COALESCE(DATE_FORMAT(A1.SBSCRB_DE, '%Y-%m-%d') , '' ) AS SBSCRB_DE
+		      , COALESCE(DATE_FORMAT(A1.SECSN_DE, '%Y-%m-%d') , '' ) AS SECSN_DE
+		      , COALESCE( A1.LOCK_LAST_PNTTM      , '' ) AS LOCK_LAST_PNTTM
+		      , COALESCE( A1.LOCK_AT            , 'N')  AS LOCK_AT
+			  , COALESCE( A1.GROUP_ID            , 'N')  AS GROUP_ID
+		   FROM ARMUSER A1
+		  WHERE A1.esntl_id = #{esntlId}
+	</select>
+
+	<!-- (AJAX / DETAIL) : 회원 권한 상세조회 -->
+	<select id="selectAuthInfoDetail" parameterType="egovMap" resultType="egovMap">
+		 SELECT SCRTY_DTRMN_TRGET_ID
+		 		 , MBER_TY_CODE
+		 		 , AUTHOR_CODE
+		   FROM COMTNEMPLYRSCRTYESTBS
+		  WHERE SCRTY_DTRMN_TRGET_ID = #{esntlId}
+	</select>
+
+	<!-- (AJAX / DETAIL ) : 학위정보 상세조회 -->
+	<select id="selectDegreeInfoDetail" parameterType="egovMap" resultType="egovMap">
+		 SELECT A1.ESNTL_ID
+		 	  , COALESCE( A1.SEQ           , '' ) AS seq
+		 	  , COALESCE( A1.WORK_GBN           , '' ) AS WORK_GBN
+			  , COALESCE(DATE_FORMAT(A1.START_DATE, '%Y-%m-%d') , '' ) AS START_DATE
+			  , COALESCE(DATE_FORMAT(A1.END_DATE, '%Y-%m-%d') , '' ) AS END_DATE
+			  , COALESCE( A1.WORK_NM           , '' ) AS WORK_NM
+		      , COALESCE( A1.DEGREE      , '' ) AS degree
+		      , CASE
+		           WHEN DATE_FORMAT(A1.END_DATE, '%Y-%m-%d') = '9999-12-31' THEN 'N'
+		           ELSE 'Y'
+		       	END AS DEGREE_PERIOD
+		   FROM ARMWORK A1
+		  WHERE A1.esntl_id = #{esntlId}
+		    AND A1.WORK_GBN  = #{workGbn}
+	</select>
+
+	<!-- (AJAX / DETAIL ) : 자격증정보 상세조회 -->
+	<select id="selectLicenceInfoDetail" parameterType="egovMap" resultType="egovMap">
+		 SELECT A1.ESNTL_ID
+		 	  , COALESCE( A1.SEQ           , '' ) AS seq
+			  , COALESCE(DATE_FORMAT(A1.GET_DATE, '%Y-%m-%d') , '' ) AS GET_DATE
+			  , COALESCE( A1.LICE_NM           , '' ) AS LICE_NM
+		      , COALESCE( A1.LICE_NO      , '' ) AS LICE_NO
+		      , COALESCE( A1.COMP_NM      , '' ) AS COMP_NM
+		   FROM ARMLICE A1
+		  WHERE A1.ESNTL_ID = #{esntlId}
+	</select>
+
+	<!-- (AJAX / DETAIL ) : 경력정보 상세조회 -->
+	<select id="selectCareerInfoDetail" parameterType="egovMap" resultType="egovMap">
+		 SELECT A1.ESNTL_ID
+		 	  , COALESCE( A1.SEQ           , '' ) AS seq
+		 	  , COALESCE( A1.WORK_GBN           , '' ) AS WORK_GBN
+			  , COALESCE(DATE_FORMAT(A1.START_DATE, '%Y-%m-%d') , '' ) AS START_DATE
+			  , COALESCE(DATE_FORMAT(A1.END_DATE, '%Y-%m-%d') , '' ) AS END_DATE
+			  , COALESCE( A1.WORK_NM           , '' ) AS WORK_NM
+		      , COALESCE( A1.POSITION      , '' ) AS POSITION
+		      , COALESCE( A1.WORK_DESC      , '' ) AS WORK_DESC
+		      , CASE
+		           WHEN DATE_FORMAT(A1.END_DATE, '%Y-%m-%d') = '9999-12-31' THEN 'N'
+		           ELSE 'Y'
+		       	END AS CAREER_PERIOD
+		   FROM ARMWORK A1
+		  WHERE A1.esntl_id = #{esntlId}
+		    AND A1.WORK_GBN  = #{workGbn}
+	</select>
+
+	<!-- (AJAX / CRUD / UPDAETE) : 회원 수정 -->
+	<update id="updateAdminUserMember" parameterType="MemberUpdateRequest">
+		UPDATE ARMUSER
+		   SET
+		     USER_ID = #{userId}
+		     , user_nm           = ENCRYPT(#{userNm})
+		     <if test="password != '' and password != null">
+		     , password          = #{newPw}
+		     , CHG_PWD_LAST_PNTTM = now()
+		     </if>
+		     , USR_TELNO           = ENCRYPT(REPLACE( #{usrTelno} , '-', '' ))
+		     , MBTLNUM           = ENCRYPT(REPLACE( #{mbtlnum} , '-', '' ))
+		     , EMAIL_ADRES 		 = ENCRYPT(#{emailAdres})
+		     , MBER_STTUS        = #{mberSttus}
+		     , SBSCRB_DE =
+							  <choose>
+							    <when test="sbscrbDe != null and sbscrbDe != ''">
+							      #{sbscrbDe}
+							    </when>
+							    <otherwise>
+							      NULL
+							    </otherwise>
+							  </choose>
+		     <if test='mberSttus == "D"'>
+		     , SECSN_DE          = NOW()
+		     </if>
+		     <if test='mberSttus != "D"'>
+		     , SECSN_DE          = NULL
+		     </if>
+		     <if test='lockAt == "Y"'>
+		      , LOCK_AT              = #{lockAt}
+		      , LOCK_CNT             = 5
+		      , LOCK_LAST_PNTTM      = NOW()
+		     </if>
+		     <if test='lockAt == "N"'>
+		      , LOCK_AT              = NULL
+		      , LOCK_CNT             = NULL
+		      , LOCK_LAST_PNTTM      = NULL
+		     </if>
+			 , GROUP_ID 			 = #{groupId}
+		     , CHG_LAST_DT 			 = now()
+		 WHERE esntl_id          = #{esntlId}
+	</update>
+
+	<!-- (AJAX / CRUD / UPDATE) : 회원 권한 수정 -->
+	<update id="updateAdminRollAjax" parameterType="egovMap">
+		UPDATE LETTNEMPLYRSCRTYESTBS
+		   SET AUTHOR_CODE = #{authCode}
+		 WHERE SCRTY_DTRMN_TRGET_ID  = #{esntlId}
+	</update>
+
+	<!-- (AJAX / DATATABLE / 리스트 ) : 관리자회원 휴가일수 조회 -->
+	<select id="selectVacaDayInfoList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM ( SELECT ROW_NUMBER() OVER (ORDER BY A.VACA_YEAR DESC) AS RNUM
+		  			  , COALESCE( A.ESNTL_ID          , '' )  AS ESNTL_ID
+		  			  , COALESCE( A.VACA_YEAR          , '' )  AS VACA_YEAR
+		  			  , COALESCE( A.VACA_DAY          , '' )  AS VACA_DAY
+		  			  , COALESCE( A.VACA_TIME          , '' )  AS VACA_TIME
+		          FROM ARMVACA A
+		         WHERE ESNTL_ID = #{esntlId}
+		       ) A1
+		 LIMIT #{lengthPage} OFFSET #{startIndex}
+	</select>
+
+	<!-- (AJAX / DATATABLE / 카운트 ) : 관리자회원 휴가일수 개수 조회 -->
+	<select id="selectVacaDayInfoListCount" parameterType="egovMap" resultType="int">
+		SELECT COUNT(1)
+		  FROM ( SELECT ROW_NUMBER() OVER (ORDER BY A.VACA_YEAR DESC) AS RNUM
+		  			  , COALESCE( A.ESNTL_ID          , '' )  AS ESNTL_ID
+		  			  , COALESCE( A.VACA_YEAR          , '' )  AS VACA_YEAR
+		  			  , COALESCE( A.VACA_DAY          , '' )  AS VACA_DAY
+		          FROM ARMVACA A
+		         WHERE ESNTL_ID = #{esntlId}
+		       ) A1
+	</select>
+
+	<!-- (AJAX / CRUD / DELETE) : 관리자회원 휴가일수 삭제 -->
+	<delete id="deleteVacaDayInfo" parameterType="egovMap">
+		DELETE FROM ARMVACA
+			     WHERE ESNTL_ID = #{esntlId}
+			         AND VACA_YEAR = #{vacaYear}
+	</delete>
+
+	<!-- (AJAX / CRUD / DELETE) : 관리자회원 휴가일수 리스트 삭제 -->
+	<delete id="deleteVacaDayInfoList" parameterType="egovMap">
+		DELETE FROM ARMVACA
+			     WHERE ESNTL_ID = #{esntlId}
+	</delete>
+
+	<!-- (AJAX / CRUD / INSERT) : 관리자회원 휴가일수 수정 -->
+	<update id="insertVacaDayInfoList" parameterType="egovMap">
+		INSERT INTO ARMVACA ( ESNTL_ID
+		 							, VACA_YEAR
+		                            , VACA_DAY
+		                            , VACA_TIME
+		                            , CHG_USER_ID
+									, CRT_DATE
+									, CHG_DATE
+		                   ) VALUES ( #{esntlId}
+		                   			, #{vacaYear}
+		                            , #{vacaDay}
+		                            , #{vacaTime}
+		                            , #{UNIQ_ID}
+				                    , NOW()
+				                    , NOW()
+		                            )
+	</update>
+
+	<!-- (AJAX / CRUD / UPDAETE) : 관리자회원 휴가일수 수정 -->
+	<update id="updateVacaDayInfoList" parameterType="egovMap">
+		UPDATE ARMVACA
+		   SET VACA_DAY = #{vacaDay}
+		     , VACA_TIME = #{vacaTime}
+		     , CHG_USER_ID = #{UNIQ_ID}
+		     , CHG_DATE = NOW()
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND VACA_YEAR = #{vacaYear}
+	</update>
+
+	<!-- (AJAX / CRUD / UPDAETE) : 관리자회원 비밀번호 수정 -->
+	<update id="updateAdminUserPw" parameterType="egovMap">
+		UPDATE ARMUSER
+		   SET CHG_LAST_DT 			 = now()
+		     <if test="password != '' and password != null">
+		     , password          = #{newPw}
+		     , CHG_PWD_LAST_PNTTM = now()
+		     </if>
+		 WHERE USER_ID	         = #{userId}
+		   AND esntl_id          = #{esntlId}
+	</update>
+
+	<!-- (AJAX / CRUD / UPDAETE) : 게시글 관리자 수정 -->
+	<update id="updateSetBrdManager" parameterType="egovMap">
+		UPDATE ARMUSER
+		   SET BRD_MANAGER_YN = #{brdManagerYn}
+		 WHERE 1=1
+		 	<if test="esntlId != null and esntlId != ''">
+	           AND ESNTL_ID  = #{esntlId}
+           </if>
+	</update>
+
+	<select id="selectAuthList" parameterType="egovMap" resultType="egovMap">
+		select A1.GROUP_ID 
+		      , A1.GROUP_NM 
+		      , A1.GROUP_DC 
+		 from lettnauthorgroupinfo as a1
+		where GROUP_ID != 'GROUP_00000000000001'
+	</select>
+
+	<update id="deleteUserMemberAjax" parameterType="MemberDeleteRequest">
+		UPDATE ARMUSER
+		   SET MBER_STTUS = 'D'
+		     , SECSN_DE         = NOW()
+		     , CHG_LAST_DT = NOW()
+		 WHERE ESNTL_ID          = #{esntlId}
+	</update>
+</mapper>

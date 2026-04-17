@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="MenuMakeManageDAO">
+
+	<!--  메뉴 생성 목록 조회  -->
+	<select id="selectMenuMakeList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM (SELECT ROW_NUMBER() OVER (ORDER BY AUTHOR_NM) AS RNUM
+		             , COALESCE(AUTHOR_CODE              , '' ) AS AUTHOR_CODE
+		             , COALESCE(AUTHOR_NM                , '' ) AS AUTHOR_NM
+		             , COALESCE(AUTHOR_DC                , '' ) AS AUTHOR_DC
+		             , COALESCE(DATE_FORMAT(AUTHOR_CREAT_DE, '%Y-%m-%d %h:%i:%s') , '' ) AS AUTHOR_CREAT_DE
+		             , ( SELECT IF( COUNT(B.AUTHOR_CODE) > 0, '생성', '미생성' )
+		                   FROM LETTNMENUCREATDTLS B
+		                  WHERE B.AUTHOR_CODE = A.AUTHOR_CODE ) AS chkYeoBu
+		          FROM LETTNAUTHORINFO A
+		         WHERE 1=1
+		         <if test='searchCondition == "1"'>
+		           AND AUTHOR_CODE LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND AUTHOR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND AUTHOR_DC LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		       ) A1
+		 	<!-- LIMIT #{lengthPage} OFFSET #{startIndex} -->
+	</select>
+
+	<select id="selectMenuCreatList" parameterType="egovMap" resultType="egovMap">
+		
+			SELECT
+				  A.MENU_NO AS MENU_NO
+				, A.MENU_ORDR AS MENU_ORDR
+				, A.MENU_NM AS MENU_NM
+				, A.UPPER_MENU_NO AS UPPER_MENU_ID
+			    , (SELECT count(B.MENU_NO) 
+			         FROM LETTNMENUCREATDTLS B   
+			        WHERE B.MENU_NO  = A.MENU_NO 
+			          AND B.AUTHOR_CODE = #{authorCode}) AS CHK_YEO_BU
+			FROM LETTNMENUINFO A
+			WHERE A.MENU_NO > 0
+			ORDER BY A.MENU_ORDR
+		 
+	</select>
+
+	<select id="selectMenuCreatCnt" parameterType="egovMap" resultType="int">
+		
+			SELECT COUNT(AUTHOR_CODE) AS totcnt
+			  FROM LETTNAUTHORINFO
+			 WHERE AUTHOR_CODE = #{authorCode}
+		
+	</select>
+
+	<delete id="deleteMenuCreat">
+		                          
+			DELETE FROM LETTNMENUCREATDTLS              
+			 WHERE AUTHOR_CODE=#{authorCode}                
+		                                
+	</delete>
+
+	<insert id="insertMenuCreat">
+		
+			INSERT INTO LETTNMENUCREATDTLS ( AUTHOR_CODE ,MENU_NO )
+			VALUES (  #{authorCode}, #{menuNo} )
+		
+	</insert>
+
+</mapper>

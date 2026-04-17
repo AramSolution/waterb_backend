@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="CmmCodeManageDAO">
+
+	<!-- 공통분류코드 목록 조회 -->
+	<select id="selectClCodeList" parameterType="egovMap" resultType="egovMap">
+		SELECT A2.CL_CODE
+             , A2.CL_CODE_NM
+          FROM LETTCCMMNCLCODE A2
+    </select>
+
+	<!-- 대분류코드 목록 조회 -->
+	<select id="selectCmmCodeList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.CODE_ID) AS RNUM
+		             , A2.CODE_ID
+		             , A2.CODE_ID_NM
+		             , A2.CODE_ID_DC
+		             , A2.USE_AT
+		             , A2.CL_CODE
+		             , B2.CL_CODE_NM
+		          FROM LETTCCMMNCODE   A2
+		          	 , LETTCCMMNCLCODE B2
+		         WHERE A2.CL_CODE = B2.CL_CODE
+		         <if test='searchCondition == "1"'>
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCodeId != null and filterCodeId != ''">
+		           AND A2.CODE_ID LIKE CONCAT('%', #{filterCodeId}, '%')
+		         </if>
+		         <if test="filterCodeIdNm != null and filterCodeIdNm != ''">
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{filterCodeIdNm}, '%')
+		         </if>
+		         <if test="filterClCodeNm != null and filterClCodeNm != ''">
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{filterClCodeNm}, '%')
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+	<!-- 대분류코드 목록 개수 조회 -->
+	<select id="selectCmmCodeCount" parameterType="egovMap" resultType="int">
+		SELECT COUNT(1) AS LIST_CNT
+		  FROM (SELECT A2.CODE_ID
+		          FROM LETTCCMMNCODE   A2
+		          	 , LETTCCMMNCLCODE B2
+		         WHERE A2.CL_CODE = B2.CL_CODE
+		         <if test='searchCondition == "1"'>
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCodeId != null and filterCodeId != ''">
+		           AND A2.CODE_ID LIKE CONCAT('%', #{filterCodeId}, '%')
+		         </if>
+		         <if test="filterCodeIdNm != null and filterCodeIdNm != ''">
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{filterCodeIdNm}, '%')
+		         </if>
+		         <if test="filterClCodeNm != null and filterClCodeNm != ''">
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{filterClCodeNm}, '%')
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+	</select>
+
+	<!-- 대분류코드 엑셀 목록 조회 -->
+	<select id="selectCmmCodeExcelList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.CODE_ID) AS RNUM
+		             , A2.CODE_ID
+		             , A2.CODE_ID_NM
+		             , A2.CODE_ID_DC
+		             , A2.USE_AT
+		             , A2.CL_CODE
+		             , B2.CL_CODE_NM
+		          FROM LETTCCMMNCODE   A2
+		          	 , LETTCCMMNCLCODE B2
+		         WHERE A2.CL_CODE = B2.CL_CODE
+		         <if test='searchCondition == "1"'>
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCodeId != null and filterCodeId != ''">
+		           AND A2.CODE_ID LIKE CONCAT('%', #{filterCodeId}, '%')
+		         </if>
+		         <if test="filterCodeIdNm != null and filterCodeIdNm != ''">
+		           AND A2.CODE_ID_NM LIKE CONCAT('%', #{filterCodeIdNm}, '%')
+		         </if>
+		         <if test="filterClCodeNm != null and filterClCodeNm != ''">
+		           AND B2.CL_CODE_NM LIKE CONCAT('%', #{filterClCodeNm}, '%')
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+    </select>
+
+	<!-- 대분류코드 중복 체크 -->
+	<select id="checkCmmCodeDuplication" parameterType="egovMap" resultType="String">
+		SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+		  FROM LETTCCMMNCODE
+		 WHERE CODE_ID = UPPER(#{codeId})
+    </select>
+
+	<!-- 대분류코드 등록 -->
+	<insert id="insertCmmCode" parameterType="egovMap">
+	    INSERT INTO LETTCCMMNCODE 	( CODE_ID
+	    						   	, CODE_ID_NM
+	    						   	, CODE_ID_DC
+	    						   	, USE_AT
+	    						   	, CL_CODE
+	    						   	, FRST_REGIST_PNTTM
+	    						   	, FRST_REGISTER_ID
+	    						   	, LAST_UPDT_PNTTM
+	    						   	, LAST_UPDUSR_ID
+	                       ) VALUES ( UPPER(#{codeId})
+	                      		   	, COALESCE(#{codeIdNm}, '')
+	                      		   	, COALESCE(#{codeIdDc}, '')
+	                      		   	, COALESCE(#{useAt}, 'N')
+	                      		   	, UPPER(#{clCode})
+	                      		   	, SYSDATE()
+	                      		  	, #{UNIQ_ID}
+	                      		  	, SYSDATE()
+	                      		  	, #{UNIQ_ID}
+	    )
+    </insert>
+
+	<!-- 대분류코드 상세 조회 -->
+	<select id="selectCmmCodeDetail" parameterType="egovMap" resultType="egovMap">
+		SELECT A2.CODE_ID
+		     , A2.CODE_ID_NM
+		     , A2.CODE_ID_DC
+		     , A2.USE_AT
+		     , A2.CL_CODE
+		     , B2.CL_CODE_NM
+		  FROM LETTCCMMNCODE   A2
+		  	 , LETTCCMMNCLCODE B2
+		 WHERE A2.CL_CODE = B2.CL_CODE
+		   AND A2.CODE_ID = #{codeId}
+    </select>
+
+	<!-- 대분류코드 수정 -->
+	<update id="updateCmmCode" parameterType="egovMap">
+        UPDATE LETTCCMMNCODE
+           SET CODE_ID_NM               = COALESCE(#{codeIdNm}, '')
+             , CODE_ID_DC               = COALESCE(#{codeIdDc}, '')
+             , USE_AT               	= COALESCE(#{useAt}, 'N')
+             , LAST_UPDT_PNTTM          = SYSDATE()
+             , LAST_UPDUSR_ID     		= #{UNIQ_ID}
+         WHERE CODE_ID                	= #{codeId}
+    </update>
+
+	<!-- 대분류코드 삭제 -->
+	<update id="deleteCmmCode" parameterType="egovMap">
+        UPDATE LETTCCMMNCODE
+           SET USE_AT    			 = 'N'
+         WHERE CODE_ID               = #{codeId}
+    </update>
+
+	<!-- 소분류코드 목록 조회 -->
+	<select id="selectCmmDetailCodeList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.ORDER_BY) AS RNUM
+		             , A2.CODE_ID
+		             , A2.CODE
+		             , A2.CODE_NM
+		             , A2.CODE_DC
+		             , A2.USE_AT
+		             , A2.ORDER_BY
+		             , B2.CODE_ID_NM
+		          FROM LETTCCMMNDETAILCODE   A2
+		          	 , LETTCCMMNCODE 		 B2
+		         WHERE A2.CODE_ID = B2.CODE_ID
+		           AND B2.USE_AT = 'Y'
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchCondition}, '%')
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCode != null and filterCode != ''">
+		           AND A2.CODE LIKE CONCAT('%', #{filterCode}, '%')
+		         </if>
+		         <if test="filterCodeNm != null and filterCodeNm != ''">
+		           AND A2.CODE_NM LIKE CONCAT('%', #{filterCodeNm}, '%')
+		         </if>
+		         <if test="filterOrderBy != null and filterOrderBy != ''">
+		           AND A2.ORDER_BY = #{filterOrderBy}
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+	<!-- 소분류코드 목록 개수 조회 -->
+	<select id="selectCmmDetailCodeCount" parameterType="egovMap" resultType="int">
+		SELECT COUNT(1) AS LIST_CNT
+		  FROM (SELECT A2.CODE_ID
+		          FROM LETTCCMMNDETAILCODE   A2
+		          	 , LETTCCMMNCODE 		 B2
+		         WHERE A2.CODE_ID = B2.CODE_ID
+		           AND B2.USE_AT = 'Y'
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchCondition}, '%')
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCode != null and filterCode != ''">
+		           AND A2.CODE LIKE CONCAT('%', #{filterCode}, '%')
+		         </if>
+		         <if test="filterCodeNm != null and filterCodeNm != ''">
+		           AND A2.CODE_NM LIKE CONCAT('%', #{filterCodeNm}, '%')
+		         </if>
+		         <if test="filterOrderBy != null and filterOrderBy != ''">
+		           AND A2.ORDER_BY = #{filterOrderBy}
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+	</select>
+
+	<!-- 소분류코드 엑셀 목록 조회 -->
+	<select id="selectCmmDetailCodeExcelList" parameterType="egovMap" resultType="egovMap">
+		SELECT *
+		  FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.ORDER_BY) AS RNUM
+		             , A2.CODE_ID
+		             , A2.CODE
+		             , A2.CODE_NM
+		             , A2.CODE_DC
+		             , A2.USE_AT
+		             , A2.ORDER_BY
+		             , B2.CODE_ID_NM
+		          FROM LETTCCMMNDETAILCODE   A2
+		          	 , LETTCCMMNCODE 		 B2
+		         WHERE A2.CODE_ID = B2.CODE_ID
+		           AND B2.USE_AT = 'Y'
+		           AND A2.CODE_ID LIKE CONCAT('%', #{searchCondition}, '%')
+		         <if test='searchUseAt != "" and searchUseAt != null'>
+		           AND A2.USE_AT = #{searchUseAt}
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterCode != null and filterCode != ''">
+		           AND A2.CODE LIKE CONCAT('%', #{filterCode}, '%')
+		         </if>
+		         <if test="filterCodeNm != null and filterCodeNm != ''">
+		           AND A2.CODE_NM LIKE CONCAT('%', #{filterCodeNm}, '%')
+		         </if>
+		         <if test="filterOrderBy != null and filterOrderBy != ''">
+		           AND A2.ORDER_BY = #{filterOrderBy}
+		         </if>
+		         <if test="filterUseAt != null and filterUseAt != ''">
+		           AND A2.USE_AT = #{filterUseAt}
+		         </if>
+		       ) A1
+    </select>
+
+	<!-- 코드ID 목록 조회 -->
+	<select id="selectCodeIdList" parameterType="egovMap" resultType="egovMap">
+		SELECT A2.CODE_ID
+             , A2.CODE_ID_NM
+          FROM LETTCCMMNCODE   A2
+         WHERE A2.CL_CODE = #{clCode}
+    </select>
+
+	<!-- 소분류 코드 중복확인 체크 -->
+	<select id="checkCmmDetailCodeDuplication" parameterType="egovMap" resultType="String">
+		SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+		  FROM LETTCCMMNDETAILCODE
+		 WHERE CODE_ID = UPPER(#{codeId})
+		   AND CODE    = UPPER(#{code})
+	</select>
+
+	<!-- 소분류 코드 등록 -->
+	<insert id="insertCmmDetailCode" parameterType="egovMap">
+	    INSERT INTO LETTCCMMNDETAILCODE 	( CODE_ID
+	    						   			, CODE
+	    						   			, CODE_NM
+			    						   	, CODE_DC
+			    						   	, ORDER_BY
+			    						   	, USE_AT
+			    						   	, FRST_REGIST_PNTTM
+			    						   	, FRST_REGISTER_ID
+			    						   	, LAST_UPDT_PNTTM
+			    						   	, LAST_UPDUSR_ID
+			                       ) VALUES ( UPPER(#{codeId})
+			                      		   	, UPPER(#{code})
+			                      		   	, COALESCE(#{codeNm}, '')
+			                      		   	, COALESCE(#{codeDc}, '')
+			                      		   	, #{orderBy}
+			                      		   	, COALESCE(#{useAt}, 'N')
+			                      		   	, SYSDATE()
+			                      		  	, #{UNIQ_ID}
+			                      		  	, SYSDATE()
+			                      		  	, #{UNIQ_ID}
+	    )
+    </insert>
+
+	<!-- 소분류코드 상세 조회 -->
+	<select id="selectCmmDetailCodeDetail" parameterType="egovMap" resultType="egovMap">
+    	SELECT A2.CODE_ID
+             , B2.CODE_ID_NM
+             , A2.CODE
+             , A2.CODE_NM
+             , A2.CODE_DC
+             , A2.ORDER_BY
+             , A2.USE_AT
+             , B2.CL_CODE
+          FROM LETTCCMMNDETAILCODE   A2
+          	 , LETTCCMMNCODE 		 B2
+         WHERE A2.CODE_ID = B2.CODE_ID
+           AND A2.CODE_ID = #{codeId}
+           AND A2.CODE 	  = #{code}
+           AND B2.USE_AT  = 'Y'
+    </select>
+
+	<!-- 소분류코드 수정 -->
+	<update id="updateCmmDetailCode" parameterType="egovMap">
+        UPDATE LETTCCMMNDETAILCODE
+           SET CODE_NM               = COALESCE(#{codeNm}, '')
+             , CODE_DC               = COALESCE(#{codeDc}, '')
+             , ORDER_BY               = #{orderBy}
+             , USE_AT                = COALESCE(#{useAt}, 'N')
+             , LAST_UPDT_PNTTM       = SYSDATE()
+             , LAST_UPDUSR_ID     	 = #{UNIQ_ID}
+         WHERE CODE_ID               = #{codeId}
+           AND CODE 				 = #{code}
+    </update>
+
+	<!-- 소분류코드 삭제 -->
+	<update id="deleteCmmDetailCode" parameterType="egovMap">
+        UPDATE LETTCCMMNDETAILCODE
+           SET USE_AT    			 = 'N'
+         WHERE CODE_ID               = #{codeId}
+           AND CODE 				 = #{code}
+    </update>
+
+	<!-- 소분류코드 리스트 조회 (레거시: egovMap) -->
+	<select id="selectLetDetailCodeList" parameterType="egovMap" resultType="egovMap">
+		SELECT
+			CODE_ID, CODE, CODE_NM, CODE_DC
+			FROM
+			LETTCCMMNDETAILCODE
+			WHERE
+			USE_AT = 'Y'
+			AND CODE_ID = #{codeId}
+			ORDER BY ORDER_BY
+    </select>
+
+	<!-- 소분류코드 리스트 조회 (REST API용: DTO 파라미터/결과) -->
+	<select id="selectLetDetailCodeListDto" parameterType="DetailCodeListRequest" resultType="DetailCodeResponse">
+		SELECT
+			CODE_ID AS codeId,
+			CODE AS code,
+			CODE_NM AS codeNm,
+			CODE_DC AS codeDc
+		FROM LETTCCMMNDETAILCODE
+		WHERE USE_AT = 'Y'
+		  AND CODE_ID = #{codeId}
+		ORDER BY ORDER_BY
+	</select>
+
+	<!-- 소분류코드 리스트 조회 (학교별 소분류코드 목록 조회) -->
+	<select id="selectLetDetailCodeListByCategory" parameterType="DetailCodeListByCategoryRequest" resultType="DetailCodeListByCategoryResponse">
+		SELECT 
+			CASE 
+				<if test='studentCode != null and studentCode.equals("J")'>
+				WHEN CODE LIKE '01%' THEN 'REQ_SUB'
+				WHEN CODE LIKE '03%' THEN 'JOIN_TIME'
+				</if>
+				<if test='studentCode != null and studentCode.equals("H")'>
+				WHEN CODE LIKE '02%' THEN 'REQ_SUB'
+				WHEN CODE LIKE '04%' THEN 'JOIN_TIME'
+				</if>
+				WHEN CODE LIKE '08%' THEN 'JOIN_CNT'
+				WHEN CODE LIKE '09%' THEN 'BEF_JOIN'
+				WHEN CODE LIKE '05%' THEN 'S_REASON'
+				WHEN CODE LIKE '06%' THEN 'S_EXPECT'
+				WHEN CODE LIKE '07%' THEN 'S_APPR'
+			END AS CODE_CATEGORY,
+			CODE_ID, 
+			CODE, 
+			CODE_NM, 
+			CODE_DC
+		FROM 
+			LETTCCMMNDETAILCODE
+		WHERE 
+			CODE_ID = #{codeId}
+			AND USE_AT = 'Y'
+			AND (CODE LIKE '08%' OR CODE LIKE '09%' OR CODE LIKE '05%' OR CODE LIKE '06%' OR CODE LIKE '07%'
+			<if test='studentCode != null and studentCode.equals("J")'>
+			OR CODE LIKE '01%'
+			OR CODE LIKE '03%'
+			</if>
+			<if test='studentCode != null and studentCode.equals("H")'>
+			OR CODE LIKE '02%'
+			OR CODE LIKE '04%'
+			</if>
+			)
+		ORDER BY CODE ASC
+	</select>
+
+</mapper>

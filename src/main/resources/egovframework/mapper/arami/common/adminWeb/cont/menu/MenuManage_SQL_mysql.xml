@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="MenuManageDAO">
+
+	<!-- 메뉴 목록 조회 -->
+	<select id="selectMenuListT_D" resultType="egovMap">
+		SELECT
+		      MENU_NO           AS MENU_NO
+			, MENU_ORDR         AS MENU_ORDR
+			, MENU_NM           AS MENU_NM
+			, UPPER_MENU_NO     AS UPPER_MENU_ID
+			, MENU_DC           AS MENU_DC
+			, RELATE_IMAGE_PATH AS RELATE_IMAGE_PATH
+			, RELATE_IMAGE_NM   AS RELATE_IMAGE_NM
+			, PROGRM_FILE_NM    AS PROGRM_FILE_NM
+		FROM LETTNMENUINFO 
+		WHERE MENU_NO > 0 
+		ORDER BY MENU_ORDR
+	</select>
+
+</mapper>

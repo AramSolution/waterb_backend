@@ -1,0 +1,1004 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="artappmManageDAO">
+
+    <!-- 지원사업 신청 목록 조회 -->
+    <select id="selectArtappmList" parameterType="ArtappmListRequest" resultType="ArtappmDTO">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER ( ORDER BY A1.PRO_ID) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_PRO_SEQ, '0') AS REQ_PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS C_MBTLNUM
+                , COALESCE(U.SEXDSTN_CODE, '') AS C_SEXDSTN_CODE
+                , COALESCE(U.BRTHDY, '') AS C_BRTHDY
+                , COALESCE(DECRYPT(A1.HEAD_NM), '') AS HEAD_NM
+                , COALESCE(A1.P_ESNTL_ID, '') AS P_ESNTL_ID
+                , COALESCE(DECRYPT(A1.P_USER_NM), '') AS P_USER_NM
+                , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+                , CASE
+                    WHEN A1.PRO_TYPE = '01' THEN '1인탐구형'
+                    WHEN A1.PRO_TYPE = '02' THEN '모둠탐구형'
+                    ELSE ''
+                END AS PRO_TYPE_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(A1.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+                , COALESCE(A1.BRTHDY, '') AS BRTHDY
+                , COALESCE(DECRYPT(A1.P_IHIDNUM), '') AS P_IHIDNUM
+                , COALESCE(DECRYPT(A1.C_IHIDNUM), '') AS C_IHIDNUM
+                , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+                , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+                , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+                , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+                , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+                , CASE
+                    WHEN A1.SCHOOL_LVL IS NOT NULL AND A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년 ', A1.SCHOOL_NO, '반')
+                    WHEN A1.SCHOOL_LVL IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년')
+                    WHEN A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_NO, '반')
+                    ELSE ''
+                END AS SCHOOL_CLASS
+                , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+                , COALESCE((select CODE_NM from LETTCCMMNDETAILCODE where CODE_ID = 'ARM002' and CODE = A1.PAY_BANK_CODE), '' ) as PAY_BANK_CODE_NM
+                , COALESCE(A1.PAY_BANK, '') AS PAY_BANK
+                , COALESCE(A1.HOLDER_NM, '') AS HOLDER_NM
+                , COALESCE(A1.REQ_PART, '') AS REQ_PART
+                , COALESCE(A1.PLAY_PART, '') AS PLAY_PART
+                , COALESCE(A1.REQ_OBJ, '') AS REQ_OBJ
+                , COALESCE(A1.REQ_PLAY, '') AS REQ_PLAY
+                , COALESCE(A1.REQ_PLAN, '') AS REQ_PLAN
+                , COALESCE(A1.MCHIL_YN, 'N') AS MCHIL_YN
+                , COALESCE(A1.MCHIL_NM, '') AS MCHIL_NM
+                , COALESCE(A1.REQ_DESC, '') AS REQ_DESC
+                , COALESCE(A1.FILE_ID, '') AS FILE_ID
+                , COALESCE(A1.RESULT_GB, '') AS RESULT_GB
+                , A1.REQ_DT
+                , A1.APRR_DT
+                , A1.CHG_DT
+                , A1.STOP_DT
+                , COALESCE(A1.REA_DESC, '') AS REA_DESC
+                , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+                , CASE
+                    WHEN A1.STTUS_CODE = '01' THEN '임시저장'
+                    WHEN A1.STTUS_CODE = '02' THEN '신청'
+                    WHEN A1.STTUS_CODE = '03' THEN '승인'
+                    WHEN A1.STTUS_CODE = '04' THEN '완료'
+                    WHEN A1.STTUS_CODE = '11' THEN '반려'
+                    WHEN A1.STTUS_CODE = '12' THEN '중단'
+                    WHEN A1.STTUS_CODE = '99' THEN '취소'
+                    ELSE ''
+                END AS STTUS_CODE_NM
+                , COALESCE(A1.CHG_USER_ID, '') AS CHG_USER_ID
+                , A1.CRT_DATE
+                , A1.CHG_DATE
+                , A2.WORK_DATE 
+                , A2.START_TIME
+                , COALESCE(A2.ITEM1, '') AS ITEM1
+                , COALESCE(A2.ITEM2, '') AS ITEM2
+                , COALESCE(A2.ITEM3, '') AS ITEM3
+                , COALESCE(A2.ITEM4, '') AS ITEM4
+                , COALESCE(DECRYPT(U.ZIP), '') AS ZIP
+                , COALESCE(DECRYPT(U.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(U.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(CONCAT(DECRYPT(U.ADRES), ' ', DECRYPT(U.DETAIL_ADRES)), '') AS FULL_ADRES
+            FROM ARTAPPM A1
+            LEFT JOIN ARTPROD A2
+                ON A1.PRO_ID  = A2.PRO_ID AND A1.PRO_SEQ = A2.PRO_SEQ
+            LEFT JOIN ARMUSER U
+                ON A1.C_ESNTL_ID = U.ESNTL_ID
+            LEFT JOIN ARMUSER PU
+                ON A1.P_ESNTL_ID = PU.ESNTL_ID
+            WHERE 1 = 1
+              AND A1.PRO_ID = #{searchProId}
+              <if test="searchUserNm != null and searchUserNm != ''">
+              AND DECRYPT(U.USER_NM) LIKE CONCAT('%', #{searchUserNm}, '%')
+              </if>
+        ) A0
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 지원사업 신청 목록 카운트 -->
+    <select id="selectArtappmListCount" parameterType="ArtappmListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTAPPM A1
+          LEFT JOIN ARTPROD A2
+                ON A1.PRO_ID  = A2.PRO_ID AND A1.PRO_SEQ = A2.PRO_SEQ
+          LEFT JOIN ARMUSER U
+                ON A1.C_ESNTL_ID = U.ESNTL_ID
+          LEFT JOIN ARMUSER PU
+                ON A1.P_ESNTL_ID = PU.ESNTL_ID
+         WHERE 1=1
+            AND A1.PRO_ID = #{searchProId}
+           <if test="searchUserNm != null and searchUserNm != ''">
+              AND DECRYPT(U.USER_NM) LIKE CONCAT('%', #{searchUserNm}, '%')
+           </if>
+    </select>
+
+    <!-- 지원사업 신청 엑셀 목록 조회 -->
+    <select id="selectArtappmExcelList" parameterType="ArtappmListRequest" resultType="ArtappmDTO">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER ( ORDER BY A1.PRO_ID) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_PRO_SEQ, '0') AS REQ_PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS C_MBTLNUM
+                , COALESCE(U.SEXDSTN_CODE, '') AS C_SEXDSTN_CODE
+                , COALESCE(U.BRTHDY, '') AS C_BRTHDY
+                , COALESCE(DECRYPT(A1.HEAD_NM), '') AS HEAD_NM
+                , COALESCE(A1.P_ESNTL_ID, '') AS P_ESNTL_ID
+                , COALESCE(DECRYPT(A1.P_USER_NM), '') AS P_USER_NM
+                , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+                , CASE
+                    WHEN A1.PRO_TYPE = '01' THEN '1인탐구형'
+                    WHEN A1.PRO_TYPE = '02' THEN '모둠탐구형'
+                    ELSE ''
+                END AS PRO_TYPE_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(A1.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+                , COALESCE(A1.BRTHDY, '') AS BRTHDY
+                , COALESCE(DECRYPT(A1.P_IHIDNUM), '') AS P_IHIDNUM
+                , COALESCE(DECRYPT(A1.C_IHIDNUM), '') AS C_IHIDNUM
+                , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+                , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+                , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+                , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+                , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+                , CASE
+                    WHEN A1.SCHOOL_LVL IS NOT NULL AND A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년 ', A1.SCHOOL_NO, '반')
+                    WHEN A1.SCHOOL_LVL IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년')
+                    WHEN A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_NO, '반')
+                    ELSE ''
+                END AS SCHOOL_CLASS
+                , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+                , COALESCE((select CODE_NM from LETTCCMMNDETAILCODE where CODE_ID = 'ARM002' and CODE = A1.PAY_BANK_CODE), '' ) as PAY_BANK_CODE_NM
+                , COALESCE(A1.PAY_BANK, '') AS PAY_BANK
+                , COALESCE(A1.HOLDER_NM, '') AS HOLDER_NM
+                , COALESCE(A1.REQ_PART, '') AS REQ_PART
+                , COALESCE(A1.PLAY_PART, '') AS PLAY_PART
+                , COALESCE(A1.REQ_OBJ, '') AS REQ_OBJ
+                , COALESCE(A1.REQ_PLAY, '') AS REQ_PLAY
+                , COALESCE(A1.REQ_PLAN, '') AS REQ_PLAN
+                , COALESCE(A1.MCHIL_YN, 'N') AS MCHIL_YN
+                , COALESCE(A1.MCHIL_NM, '') AS MCHIL_NM
+                , COALESCE(A1.REQ_DESC, '') AS REQ_DESC
+                , COALESCE(A1.FILE_ID, '') AS FILE_ID
+                , COALESCE(A1.RESULT_GB, '') AS RESULT_GB
+                , A1.REQ_DT
+                , A1.APRR_DT
+                , A1.CHG_DT
+                , A1.STOP_DT
+                , COALESCE(A1.REA_DESC, '') AS REA_DESC
+                , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+                , CASE
+                    WHEN A1.STTUS_CODE = '01' THEN '임시저장'
+                    WHEN A1.STTUS_CODE = '02' THEN '신청'
+                    WHEN A1.STTUS_CODE = '03' THEN '승인'
+                    WHEN A1.STTUS_CODE = '04' THEN '완료'
+                    WHEN A1.STTUS_CODE = '11' THEN '반려'
+                    WHEN A1.STTUS_CODE = '12' THEN '중단'
+                    WHEN A1.STTUS_CODE = '99' THEN '취소'
+                    ELSE ''
+                END AS STTUS_CODE_NM
+                , COALESCE(A1.CHG_USER_ID, '') AS CHG_USER_ID
+                , A1.CRT_DATE
+                , A1.CHG_DATE
+                , A2.WORK_DATE 
+                , A2.START_TIME
+                , COALESCE(A2.ITEM1, '') AS ITEM1
+                , COALESCE(A2.ITEM2, '') AS ITEM2
+                , COALESCE(A2.ITEM3, '') AS ITEM3
+                , COALESCE(A2.ITEM4, '') AS ITEM4
+                , COALESCE(DECRYPT(U.ZIP), '') AS ZIP
+                , COALESCE(DECRYPT(U.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(U.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(CONCAT(DECRYPT(U.ADRES), ' ', DECRYPT(U.DETAIL_ADRES)), '') AS FULL_ADRES
+            FROM ARTAPPM A1
+            LEFT JOIN ARTPROD A2
+                ON A1.PRO_ID  = A2.PRO_ID AND A1.PRO_SEQ = A2.PRO_SEQ
+            LEFT JOIN ARMUSER U
+                ON A1.C_ESNTL_ID = U.ESNTL_ID
+            LEFT JOIN ARMUSER PU
+                ON A1.P_ESNTL_ID = PU.ESNTL_ID
+            WHERE 1 = 1
+              AND A1.PRO_ID = #{searchProId}
+              <if test="searchUserNm != null and searchUserNm != ''">
+              AND DECRYPT(U.USER_NM) LIKE CONCAT('%', #{searchUserNm}, '%')
+              </if>
+        ) A0
+    </select>
+
+    <!-- 선정관리용 지원사업 신청 목록 조회 (PK 조건만, 페이징 없음) -->
+    <select id="selectArtappmSelectionList" parameterType="ArtappmSelectionListRequest" resultType="ArtappmDTO">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER ( ORDER BY A1.PRO_ID) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_PRO_SEQ, '0') AS REQ_PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS C_MBTLNUM
+                , COALESCE(U.SEXDSTN_CODE, '') AS C_SEXDSTN_CODE
+                , COALESCE(U.BRTHDY, '') AS C_BRTHDY
+                , COALESCE(DECRYPT(A1.HEAD_NM), '') AS HEAD_NM
+                , COALESCE(A1.P_ESNTL_ID, '') AS P_ESNTL_ID
+                , COALESCE(DECRYPT(A1.P_USER_NM), '') AS P_USER_NM
+                , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+                , CASE
+                    WHEN A1.PRO_TYPE = '01' THEN '1인탐구형'
+                    WHEN A1.PRO_TYPE = '02' THEN '모둠탐구형'
+                    ELSE ''
+                END AS PRO_TYPE_NM
+                , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(A1.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+                , COALESCE(A1.BRTHDY, '') AS BRTHDY
+                , COALESCE(DECRYPT(A1.P_IHIDNUM), '') AS P_IHIDNUM
+                , COALESCE(DECRYPT(A1.C_IHIDNUM), '') AS C_IHIDNUM
+                , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+                , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+                , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+                , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+                , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+                , CASE
+                    WHEN A1.SCHOOL_LVL IS NOT NULL AND A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년 ', A1.SCHOOL_NO, '반')
+                    WHEN A1.SCHOOL_LVL IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_LVL, '학년')
+                    WHEN A1.SCHOOL_NO IS NOT NULL
+                    THEN CONCAT(A1.SCHOOL_NO, '반')
+                    ELSE ''
+                END AS SCHOOL_CLASS
+                , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+                , COALESCE((select CODE_NM from LETTCCMMNDETAILCODE where CODE_ID = 'ARM002' and CODE = A1.PAY_BANK_CODE), '' ) as PAY_BANK_CODE_NM
+                , COALESCE(A1.PAY_BANK, '') AS PAY_BANK
+                , COALESCE(A1.HOLDER_NM, '') AS HOLDER_NM
+                , COALESCE(A1.REQ_PART, '') AS REQ_PART
+                , COALESCE(A1.PLAY_PART, '') AS PLAY_PART
+                , COALESCE(A1.REQ_OBJ, '') AS REQ_OBJ
+                , COALESCE(A1.REQ_PLAY, '') AS REQ_PLAY
+                , COALESCE(A1.REQ_PLAN, '') AS REQ_PLAN
+                , COALESCE(A1.MCHIL_YN, 'N') AS MCHIL_YN
+                , COALESCE(A1.MCHIL_NM, '') AS MCHIL_NM
+                , COALESCE(A1.REQ_DESC, '') AS REQ_DESC
+                , COALESCE(A1.FILE_ID, '') AS FILE_ID
+                , COALESCE(A1.RESULT_GB, '') AS RESULT_GB
+                , A1.REQ_DT
+                , A1.APRR_DT
+                , A1.CHG_DT
+                , A1.STOP_DT
+                , COALESCE(A1.REA_DESC, '') AS REA_DESC
+                , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+                , CASE
+                    WHEN A1.STTUS_CODE = '01' THEN '임시저장'
+                    WHEN A1.STTUS_CODE = '02' THEN '신청'
+                    WHEN A1.STTUS_CODE = '03' THEN '승인'
+                    WHEN A1.STTUS_CODE = '04' THEN '완료'
+                    WHEN A1.STTUS_CODE = '11' THEN '반려'
+                    WHEN A1.STTUS_CODE = '12' THEN '중단'
+                    WHEN A1.STTUS_CODE = '99' THEN '취소'
+                    ELSE ''
+                END AS STTUS_CODE_NM
+                , COALESCE(A1.CHG_USER_ID, '') AS CHG_USER_ID
+                , A1.CRT_DATE
+                , A1.CHG_DATE
+                , COALESCE(DECRYPT(U.ZIP), '') AS ZIP
+                , COALESCE(DECRYPT(U.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(U.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(CONCAT(DECRYPT(U.ADRES), ' ', DECRYPT(U.DETAIL_ADRES)), '') AS FULL_ADRES
+            FROM ARTAPPM A1
+            LEFT JOIN ARMUSER U
+                ON A1.C_ESNTL_ID = U.ESNTL_ID
+            LEFT JOIN ARMUSER PU
+                ON A1.P_ESNTL_ID = PU.ESNTL_ID
+            WHERE 1 = 1
+              AND A1.PRO_ID = #{proId}
+        ) A0
+    </select>
+
+    <!-- 지원사업 신청 - 학생·사업별 최신 건 조회 (userWeb bizInput). 03 진로진학 상담일자/장소 복원을 위해 REQ_ID, WORK_DT 포함. 멘토정보(사유) 표시를 위해 REA_DESC 포함 -->
+    <select id="selectArtappmByStudentAndPro" parameterType="ArtappmByStudentRequest" resultType="ArtappmDTO">
+        SELECT COALESCE(A1.REQ_ID, '') AS REQ_ID
+        , COALESCE(A1.PRO_ID, '') AS PRO_ID
+        , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+        , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+        , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+        , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+        , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS C_MBTLNUM
+        , COALESCE(U.SEXDSTN_CODE, '') AS C_SEXDSTN_CODE
+        , COALESCE(U.BRTHDY, '') AS C_BRTHDY
+        , COALESCE(DECRYPT(A1.HEAD_NM), '') AS HEAD_NM
+        , COALESCE(A1.P_ESNTL_ID, '') AS P_ESNTL_ID
+        , COALESCE(DECRYPT(A1.P_USER_NM), '') AS P_USER_NM
+        , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+        , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(A1.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+        , COALESCE(A1.BRTHDY, '') AS BRTHDY
+        , COALESCE(DECRYPT(A1.P_IHIDNUM), '') AS P_IHIDNUM
+        , COALESCE(DECRYPT(A1.C_IHIDNUM), '') AS C_IHIDNUM
+        , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+        , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+        , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+        , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+        , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+        , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+        , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+        , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'ARM002' AND CODE = A1.PAY_BANK_CODE), '') AS PAY_BANK_CODE_NM
+        , COALESCE(A1.PAY_BANK, '') AS PAY_BANK
+        , COALESCE(A1.HOLDER_NM, '') AS HOLDER_NM
+        , COALESCE(A1.REQ_PART, '') AS REQ_PART
+        , COALESCE(A1.PLAY_PART, '') AS PLAY_PART
+        , COALESCE(A1.REQ_OBJ, '') AS REQ_OBJ
+        , COALESCE(A1.REQ_PLAY, '') AS REQ_PLAY
+        , COALESCE(A1.REQ_PLAN, '') AS REQ_PLAN
+        , COALESCE(A1.MCHIL_YN, 'N') AS MCHIL_YN
+        , COALESCE(A1.MCHIL_NM, '') AS MCHIL_NM
+        , COALESCE(A1.REQ_DESC, '') AS REQ_DESC
+        , COALESCE(A1.REA_DESC, '') AS REA_DESC
+        , COALESCE(A1.FILE_ID, '') AS FILE_ID
+        , COALESCE(A1.STUDY_CERT, '') AS STUDY_CERT
+        , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+        , CASE
+            WHEN A1.STTUS_CODE = '01' THEN '임시저장'
+            WHEN A1.STTUS_CODE = '02' THEN '신청'
+            WHEN A1.STTUS_CODE = '03' THEN '승인'
+            WHEN A1.STTUS_CODE = '04' THEN '완료'
+            WHEN A1.STTUS_CODE = '11' THEN '반려'
+            WHEN A1.STTUS_CODE = '12' THEN '중단'
+            WHEN A1.STTUS_CODE = '99' THEN '취소'
+            ELSE ''
+        END AS STTUS_CODE_NM
+        , COALESCE(DECRYPT(U.ZIP), '') AS ZIP
+        , COALESCE(DECRYPT(U.ADRES), '') AS ADRES
+        , COALESCE(DECRYPT(U.DETAIL_ADRES), '') AS DETAIL_ADRES
+        , DATE_FORMAT(A1.WORK_DT, '%Y-%m-%d') AS WORK_DT
+        FROM ARTAPPM A1
+        LEFT JOIN ARMUSER U ON A1.C_ESNTL_ID = U.ESNTL_ID
+        WHERE A1.PRO_ID = #{proId}
+          AND A1.C_ESNTL_ID = #{reqEsntlId}
+          <if test="pEsntlId != null and pEsntlId != ''">
+          AND A1.P_ESNTL_ID = #{pEsntlId}
+          </if>
+        ORDER BY A1.PRO_SEQ DESC, A1.REQ_DT DESC
+        LIMIT 1
+    </select>
+
+    <!-- 지원사업 신청 상세 조회 -->
+    <select id="selectArtappmDetail" parameterType="ArtappmDetailRequest" resultType="ArtappmDTO">
+        SELECT COALESCE(A1.REQ_ID, '') AS REQ_ID
+        , COALESCE(A1.PRO_ID, '') AS PRO_ID
+        , COALESCE((SELECT P.PRO_GB FROM ARTPROM P WHERE P.PRO_ID = A1.PRO_ID LIMIT 1), '') AS PRO_GB
+        , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+        , COALESCE(A1.REQ_PRO_SEQ, '0') AS REQ_PRO_SEQ
+        , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+        , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+        , COALESCE(DECRYPT(U.USER_NM), '') AS USER_NM
+        , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(U.MBTLNUM), ''), 'N'), '') AS C_MBTLNUM
+        , COALESCE(U.SEXDSTN_CODE, '') AS C_SEXDSTN_CODE
+        , COALESCE(U.BRTHDY, '') AS C_BRTHDY
+        , COALESCE(DECRYPT(A1.HEAD_NM), '') AS HEAD_NM
+        , COALESCE(A1.P_ESNTL_ID, '') AS P_ESNTL_ID
+        , COALESCE(DECRYPT(A1.P_USER_NM), '') AS P_USER_NM
+        , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+        , CASE
+            WHEN A1.PRO_TYPE = '01' THEN '1인탐구형'
+            WHEN A1.PRO_TYPE = '02' THEN '모둠탐구형'
+            ELSE ''
+        END AS PRO_TYPE_NM
+        , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(A1.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+        , COALESCE(A1.BRTHDY, '') AS BRTHDY
+        , COALESCE(DECRYPT(A1.P_IHIDNUM), '') AS P_IHIDNUM
+        , COALESCE(DECRYPT(A1.C_IHIDNUM), '') AS C_IHIDNUM
+        , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+        , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+        , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+        , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+        , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+        , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+        , CASE
+            WHEN A1.SCHOOL_LVL IS NOT NULL AND A1.SCHOOL_NO IS NOT NULL
+            THEN CONCAT(A1.SCHOOL_LVL, '학년 ', A1.SCHOOL_NO, '반')
+            WHEN A1.SCHOOL_LVL IS NOT NULL
+            THEN CONCAT(A1.SCHOOL_LVL, '학년')
+            WHEN A1.SCHOOL_NO IS NOT NULL
+            THEN CONCAT(A1.SCHOOL_NO, '반')
+            ELSE ''
+        END AS SCHOOL_CLASS
+        , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+        , COALESCE((select CODE_NM from LETTCCMMNDETAILCODE where CODE_ID = 'ARM002' and CODE = A1.PAY_BANK_CODE), '' ) as PAY_BANK_CODE_NM
+        , COALESCE(A1.PAY_BANK, '') AS PAY_BANK
+        , COALESCE(A1.HOLDER_NM, '') AS HOLDER_NM
+        , COALESCE(A1.REQ_PART, '') AS REQ_PART
+        , COALESCE(A1.PLAY_PART, '') AS PLAY_PART
+        , COALESCE(A1.REQ_OBJ, '') AS REQ_OBJ
+        , COALESCE(A1.REQ_PLAY, '') AS REQ_PLAY
+        , COALESCE(A1.REQ_PLAN, '') AS REQ_PLAN
+        , COALESCE(A1.MCHIL_YN, 'N') AS MCHIL_YN
+        , COALESCE(A1.MCHIL_NM, '') AS MCHIL_NM
+        , COALESCE(A1.REQ_DESC, '') AS REQ_DESC
+        , COALESCE(A1.FILE_ID, '') AS FILE_ID
+        , COALESCE(A1.STUDY_CERT, '') AS STUDY_CERT
+        , COALESCE(A1.RESULT_GB, '') AS RESULT_GB
+        , A1.REQ_DT
+        , A1.APRR_DT
+        , A1.CHG_DT
+        , A1.STOP_DT
+        , COALESCE(A1.REA_DESC, '') AS REA_DESC
+        , DATE_FORMAT(A1.WORK_DT, '%Y-%m-%d') AS WORK_DT
+        , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+        , CASE
+            WHEN A1.STTUS_CODE = '01' THEN '임시저장'
+            WHEN A1.STTUS_CODE = '02' THEN '신청'
+            WHEN A1.STTUS_CODE = '03' THEN '승인'
+            WHEN A1.STTUS_CODE = '04' THEN '완료'
+            WHEN A1.STTUS_CODE = '11' THEN '반려'
+            WHEN A1.STTUS_CODE = '12' THEN '중단'
+            WHEN A1.STTUS_CODE = '99' THEN '취소'
+            ELSE ''
+        END AS STTUS_CODE_NM
+        , COALESCE(A1.CHG_USER_ID, '') AS CHG_USER_ID
+        , A1.CRT_DATE
+        , A1.CHG_DATE
+        , COALESCE(DECRYPT(U.ZIP), '') AS ZIP
+        , COALESCE(DECRYPT(U.ADRES), '') AS ADRES
+        , COALESCE(DECRYPT(U.DETAIL_ADRES), '') AS DETAIL_ADRES
+        , COALESCE(CONCAT(DECRYPT(U.ADRES), ' ', DECRYPT(U.DETAIL_ADRES)), '') AS FULL_ADRES
+        , COALESCE(PU.RELATION_GB, 'M') AS RELATION_GB
+        , CASE
+            WHEN PU.RELATION_GB = 'F' THEN '부'
+            WHEN PU.RELATION_GB = 'M' THEN '모'
+            WHEN PU.RELATION_GB = 'E' THEN '기타'
+            ELSE ''
+        END AS RELATION_GB_NM
+        , COALESCE(U.FARM_YN, 'N') AS FARM_YN
+        , COALESCE(U.FARM_DESC, '') AS FARM_DESC
+        , COALESCE(AP.PRO_GBN, '') AS APPS_PRO_GBN
+        , COALESCE(AP.PRO_GBN_ETC, '') AS APPS_PRO_GBN_ETC
+        , COALESCE(AP.REQ_SUB, '') AS APPS_REQ_SUB
+        , COALESCE(AP.JOIN_CNT, '') AS APPS_JOIN_CNT
+        , COALESCE(AP.BEF_JOIN, '') AS APPS_BEF_JOIN
+        , COALESCE(AP.JOIN_TIME, '') AS APPS_JOIN_TIME
+        , COALESCE(AP.JOIN_TIME_CON, '') AS APPS_JOIN_TIME_CON
+        , COALESCE(AP.S_UNDER, '') AS APPS_S_UNDER
+        , COALESCE(AP.S_TARGET, '') AS APPS_S_TARGET
+        , COALESCE(AP.S_CHAR, '') AS APPS_S_CHAR
+        , COALESCE(AP.S_REASON, '') AS APPS_S_REASON
+        , COALESCE(AP.S_EXPECT, '') AS APPS_S_EXPECT
+        , COALESCE(AP.S_APPR, '') AS APPS_S_APPR
+        , COALESCE(AP.S_COMM, '') AS APPS_S_COMM
+        , COALESCE(AP.AGREE1_YN, 'N') AS APPS_AGREE1_YN
+        , COALESCE(AP.AGREE2_YN, 'N') AS APPS_AGREE2_YN
+        , COALESCE(AP.AGREE3_YN, 'N') AS APPS_AGREE3_YN
+    FROM ARTAPPM A1
+    LEFT JOIN ARMUSER U
+        ON A1.C_ESNTL_ID = U.ESNTL_ID
+    LEFT JOIN ARMUSER PU
+        ON A1.P_ESNTL_ID = PU.ESNTL_ID
+    LEFT JOIN ARTAPPS AP
+        ON A1.REQ_ID = AP.REQ_ID
+    WHERE 1 = 1
+        <choose>
+            <when test="reqId != null and reqId != ''">
+                AND A1.REQ_ID = #{reqId}
+            </when>
+            <otherwise>
+                AND A1.PRO_ID = #{proId}
+                AND A1.PRO_SEQ = #{proSeq}
+                AND A1.C_ESNTL_ID = #{reqEsntlId}
+                <if test="workDt != null and workDt != ''">
+                    AND A1.WORK_DT = #{workDt}
+                </if>
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- PK(지원사업·회차·신청자) 중복 건수 조회 -->
+    <select id="countArtappmByPk" parameterType="ArtappmInsertRequest" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTAPPM
+        WHERE PRO_ID = #{proId}
+          AND PRO_SEQ = COALESCE(#{proSeq}, '0')
+          <choose>
+            <when test="cEsntlId != null and cEsntlId != ''">
+          AND C_ESNTL_ID = #{cEsntlId}
+            </when>
+            <otherwise>
+          AND REQ_ESNTL_ID = #{reqEsntlId}
+            </otherwise>
+          </choose>
+    </select>
+
+    <!-- PK(지원사업·회차·상담일자·신청자) 중복 건수 조회: PRO_GB=03(공공형) 슬롯 구분용 -->
+    <select id="countArtappmByPkWithWorkDt" parameterType="ArtappmInsertRequest" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTAPPM
+        WHERE PRO_ID = #{proId}
+          AND PRO_SEQ = COALESCE(#{proSeq}, '0')
+          <choose>
+            <when test="cEsntlId != null and cEsntlId != ''">
+          AND C_ESNTL_ID = #{cEsntlId}
+            </when>
+            <otherwise>
+          AND REQ_ESNTL_ID = #{reqEsntlId}
+            </otherwise>
+          </choose>
+          AND WORK_DT = #{workDt}
+    </select>
+
+    <!-- PK(지원사업·신청자) 중복 건수 조회: 1회 신청 사업용 -->
+    <select id="countArtappmByProIdReqEsntlId" parameterType="ArtappmInsertRequest" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTAPPM
+        WHERE PRO_ID = #{proId}
+          <choose>
+            <when test="cEsntlId != null and cEsntlId != ''">
+          AND C_ESNTL_ID = #{cEsntlId}
+            </when>
+            <otherwise>
+          AND REQ_ESNTL_ID = #{reqEsntlId}
+            </otherwise>
+          </choose>
+    </select>
+
+    <!-- 지원사업신청ID(REQ_ID) 채번: PRO_ID와 동일 방식(ARTAPPM MAX 기반) -->
+    <select id="getNextReqId" parameterType="egovMap" resultType="string">
+        SELECT CONCAT('REQ_', LPAD(COALESCE(SUBSTRING(MAX(A1.REQ_ID), 5, 16), 0) + 1, 16, '0')) AS REQ_ID
+          FROM ARTAPPM A1
+    </select>
+
+    <!-- PRO_GB 05/07 인원 마감 체크: ARTPROD 행 잠금 후 REC_CNT 반환 (없으면 null) -->
+    <select id="selectArtprodRecCntForUpdate" parameterType="ArtappmInsertRequest" resultType="java.lang.Integer">
+        SELECT CAST(COALESCE(NULLIF(TRIM(P.REC_CNT), ''), '0') AS UNSIGNED) AS REC_CNT
+          FROM ARTPROD P
+         WHERE P.PRO_ID = #{proId}
+           AND P.PRO_SEQ = #{proSeq}
+           AND P.STTUS_CODE = 'A'
+         FOR UPDATE
+    </select>
+
+    <!-- PRO_GB 05/07 인원 마감 체크: 해당 일정(PRO_ID, PRO_SEQ)의 신청 건수 (접수·선정 완료만) -->
+    <select id="countArtappmByProIdProSeq" parameterType="ArtappmInsertRequest" resultType="int">
+        SELECT COUNT(*)
+          FROM ARTAPPM
+         WHERE PRO_ID = #{proId}
+           AND PRO_SEQ = #{proSeq}
+           AND STTUS_CODE IN ('03', '04')
+    </select>
+
+    <!-- 지원사업 신청 등록 -->
+    <insert id="insertArtappm" parameterType="ArtappmInsertRequest">
+        INSERT INTO ARTAPPM (
+            REQ_ID, REQ_PRO_SEQ,
+            PRO_ID, PRO_SEQ, REQ_ESNTL_ID, C_ESNTL_ID, PRO_TYPE, P_ESNTL_ID, HEAD_NM, P_USER_NM, MBTLNUM, BRTHDY, P_IHIDNUM, C_IHIDNUM, CERT_YN, CRTFC_DN_VALUE,
+            SCHOOL_ID, SCHOOL_GB, SCHOOL_NM, SCHOOL_LVL, SCHOOL_NO, PAY_BANK_CODE, PAY_BANK, HOLDER_NM,
+            REQ_PART, PLAY_PART, REQ_OBJ, REQ_PLAY, REQ_PLAN, MCHIL_YN, MCHIL_NM, REQ_DESC, FILE_ID,
+            RESULT_GB, REQ_DT, APRR_DT, CHG_DT, STOP_DT, REA_DESC, WORK_DT, STTUS_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{reqId},
+            COALESCE(#{reqProSeq}, #{proSeq}, '0'),
+            #{proId},
+            COALESCE(#{proSeq}, '0'),
+            #{reqEsntlId},
+            #{cEsntlId},
+            #{proType},
+            #{pEsntlId},
+            ENCRYPT(#{headNm}),
+            ENCRYPT(#{pUserNm}),
+            ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+            #{brthdy},
+            ENCRYPT(#{pIhidnum}),
+            ENCRYPT(#{cIhidnum}),
+            COALESCE(#{certYn}, 'N'),
+            #{crtfcDnValue},
+            #{schoolId},
+            #{schoolGb},
+            #{schoolNm},
+            COALESCE(#{schoolLvl}, 0),
+            COALESCE(#{schoolNo}, 0),
+            #{payBankCode},
+            #{payBank},
+            #{holderNm},
+            #{reqPart},
+            #{playPart},
+            #{reqObj},
+            #{reqPlay},
+            #{reqPlan},
+            COALESCE(#{mchilYn}, 'N'),
+            #{mchilNm},
+            #{reqDesc},
+            #{fileId},
+            #{resultGb},
+            CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE #{reqDt} END,
+            CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE #{aprrDt} END,
+            NOW(),
+            CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE #{stopDt} END,
+            #{reaDesc},
+            <choose>
+                <when test="workDt != null and workDt != ''">#{workDt}</when>
+                <otherwise>NULL</otherwise>
+            </choose>,
+            #{sttusCode},
+            #{UNIQ_ID},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <!-- 지원사업 신청 수정 -->
+    <update id="updateArtappm" parameterType="ArtappmUpdateRequest">
+        UPDATE ARTAPPM
+           SET PRO_SEQ = COALESCE(#{proSeq}, '0'),
+               REQ_ESNTL_ID = #{reqEsntlId},
+               C_ESNTL_ID = #{cEsntlId},
+               PRO_TYPE = #{proType},
+               P_ESNTL_ID = #{pEsntlId},
+               HEAD_NM = ENCRYPT(#{headNm}),
+               P_USER_NM = ENCRYPT(#{pUserNm}),
+               MBTLNUM = ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+               BRTHDY = #{brthdy},
+               P_IHIDNUM = ENCRYPT(#{pIhidnum}),
+               C_IHIDNUM = ENCRYPT(#{cIhidnum}),
+               CERT_YN = COALESCE(#{certYn}, 'N'),
+               <if test="crtfcDnValue != null and crtfcDnValue != ''">CRTFC_DN_VALUE = #{crtfcDnValue},</if>
+               SCHOOL_ID = #{schoolId},
+               SCHOOL_GB = #{schoolGb},
+               SCHOOL_NM = #{schoolNm},
+               SCHOOL_LVL = COALESCE(#{schoolLvl}, 0),
+               SCHOOL_NO = COALESCE(#{schoolNo}, 0),
+               PAY_BANK_CODE = #{payBankCode},
+               PAY_BANK = #{payBank},
+               HOLDER_NM = #{holderNm},
+               REQ_PART = #{reqPart},
+               PLAY_PART = #{playPart},
+               REQ_OBJ = #{reqObj},
+               REQ_PLAY = #{reqPlay},
+               REQ_PLAN = #{reqPlan},
+               MCHIL_YN = COALESCE(#{mchilYn}, 'N'),
+               MCHIL_NM = #{mchilNm},
+               REQ_DESC = #{reqDesc},
+               FILE_ID = #{fileId},
+               RESULT_GB = #{resultGb},
+               REQ_DT = CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE #{reqDt} END,
+               APRR_DT = CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE #{aprrDt} END,
+               CHG_DT = NOW(),
+               STOP_DT = CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE #{stopDt} END,
+               REA_DESC = #{reaDesc},
+               <if test="workDt != null and workDt != ''">WORK_DT = #{workDt},</if>
+               STTUS_CODE = #{sttusCode},
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- 지원사업 신청 삭제 (REQ_ID 기준) -->
+    <delete id="deleteArtappm" parameterType="ArtappmDeleteRequest">
+        DELETE
+          FROM ARTAPPM
+         WHERE REQ_ID = #{reqId}
+    </delete>
+
+    <!-- 첨부파일 그룹 비움: 해당 fileId에 파일이 없을 때 ARTAPPM.FILE_ID 초기화 (REQ_ID 기준) -->
+    <update id="clearFileId" parameterType="ArtappmClearFileIdParam">
+        UPDATE ARTAPPM
+           SET FILE_ID = NULL
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- 수강확인증 파일 ID만 UPDATE (기존 신청 건에 수강확인증 등록/교체, REQ_ID 기준) -->
+    <update id="updateArtappmStudyCert" parameterType="ArtappmStudyCertUpdateParam">
+        UPDATE ARTAPPM
+           SET STUDY_CERT = #{studyCert},
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- 선정관리: 선정여부(RESULT_GB)만 UPDATE (Y/N/R, REQ_ID 기준) -->
+    <update id="updateArtappmResultGb" parameterType="ArtappmResultGbUpdateParam">
+        UPDATE ARTAPPM
+           SET RESULT_GB = #{resultGb},
+               CHG_DATE = NOW(),
+               CHG_USER_ID = #{chgUserId}
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+
+    <!-- ARTAPPM 상태만 변경 (멘토정보 저장 시 승인(03) 등). 02=REQ_DT, 03=APRR_DT, 11=반려(REA_DESC), 12=STOP_DT, 변경 시마다 CHG_DT 반영 -->
+    <update id="updateArtappmSttusCodeByReqId" parameterType="map">
+        UPDATE ARTAPPM
+           SET STTUS_CODE = #{sttusCode},
+               CHG_DT = NOW(),
+               CHG_DATE = NOW(),
+               REQ_DT = CASE WHEN #{sttusCode} = '02' THEN NOW() ELSE REQ_DT END,
+               APRR_DT = CASE WHEN #{sttusCode} = '03' THEN NOW() ELSE APRR_DT END,
+               STOP_DT = CASE WHEN #{sttusCode} = '12' THEN NOW() ELSE STOP_DT END,
+               REA_DESC = CASE WHEN #{sttusCode} = '11' THEN #{reaDesc} ELSE REA_DESC END
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- 수강확인증 비움: 해당 fileId에 파일이 없을 때 ARTAPPM.STUDY_CERT 초기화 (REQ_ID 기준) -->
+    <update id="clearStudyCert" parameterType="ArtappmClearStudyCertParam">
+        UPDATE ARTAPPM
+           SET STUDY_CERT = NULL,
+               CHG_DATE = NOW()
+         WHERE REQ_ID = #{reqId}
+    </update>
+
+    <!-- 수강확인증 목록 조회: ARTAPPM.STUDY_CERT = ARTFILE.FILE_ID 조인, 한 행 = 수강확인증 파일 1건(FILE_ID+SEQ) -->
+    <select id="selectStudyCertList" parameterType="ArtappmListRequest" resultType="StudyCertListItemResponse">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY F.UPLOAD_DTTM DESC, A1.PRO_ID, F.SEQ) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , F.FILE_ID AS FILE_ID
+                , F.SEQ AS SEQ
+                , F.UPLOAD_DTTM AS UPLOAD_DTTM
+                , COALESCE(F.FILE_DESC, '') AS FILE_DESC
+            FROM ARTAPPM A1
+            INNER JOIN ARTFILE F
+                ON A1.STUDY_CERT = F.FILE_ID
+                AND F.STTUS_CODE = 'A'
+            WHERE A1.STUDY_CERT IS NOT NULL
+              AND TRIM(A1.STUDY_CERT) != ''
+              <choose>
+                <when test="searchReqId != null and searchReqId != ''">
+              AND A1.REQ_ID = #{searchReqId}
+                </when>
+                <otherwise>
+              AND A1.PRO_ID = #{searchProId}
+              AND A1.PRO_SEQ = #{searchProSeq}
+              AND A1.C_ESNTL_ID = #{searchReqEsntlId}
+                </otherwise>
+              </choose>
+        ) A0
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 수강확인증 전체 목록(사용자페이지용): 동일 조회, 페이징 없음 -->
+    <select id="selectStudyCertListAll" parameterType="ArtappmListRequest" resultType="StudyCertListItemResponse">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY F.UPLOAD_DTTM DESC, A1.PRO_ID, F.SEQ) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , F.FILE_ID AS FILE_ID
+                , F.SEQ AS SEQ
+                , F.UPLOAD_DTTM AS UPLOAD_DTTM
+                , COALESCE(F.FILE_DESC, '') AS FILE_DESC
+            FROM ARTAPPM A1
+            INNER JOIN ARTFILE F
+                ON A1.STUDY_CERT = F.FILE_ID
+                AND F.STTUS_CODE = 'A'
+            WHERE A1.STUDY_CERT IS NOT NULL
+              AND TRIM(A1.STUDY_CERT) != ''
+              <choose>
+                <when test="searchReqId != null and searchReqId != ''">
+              AND A1.REQ_ID = #{searchReqId}
+                </when>
+                <otherwise>
+              AND A1.PRO_ID = #{searchProId}
+              AND A1.PRO_SEQ = #{searchProSeq}
+              AND A1.C_ESNTL_ID = #{searchReqEsntlId}
+                </otherwise>
+              </choose>
+        ) A0
+    </select>
+
+    <!-- 수강확인증 엑셀 목록 조회: 동일 조회, 페이징 없음 -->
+    <select id="selectStudyCertExcelList" parameterType="ArtappmListRequest" resultType="StudyCertListItemResponse">
+        SELECT *
+        FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY F.UPLOAD_DTTM DESC, A1.PRO_ID, F.SEQ) AS RNUM
+                , COALESCE(A1.REQ_ID, '') AS REQ_ID
+                , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                , COALESCE(A1.PRO_SEQ, '0') AS PRO_SEQ
+                , COALESCE(A1.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+                , COALESCE(A1.C_ESNTL_ID, '') AS C_ESNTL_ID
+                , F.FILE_ID AS FILE_ID
+                , F.SEQ AS SEQ
+                , F.UPLOAD_DTTM AS UPLOAD_DTTM
+                , COALESCE(F.FILE_DESC, '') AS FILE_DESC
+            FROM ARTAPPM A1
+            INNER JOIN ARTFILE F
+                ON A1.STUDY_CERT = F.FILE_ID
+                AND F.STTUS_CODE = 'A'
+            WHERE A1.STUDY_CERT IS NOT NULL
+              AND TRIM(A1.STUDY_CERT) != ''
+              <choose>
+                <when test="searchReqId != null and searchReqId != ''">
+              AND A1.REQ_ID = #{searchReqId}
+                </when>
+                <otherwise>
+              AND A1.PRO_ID = #{searchProId}
+              AND A1.PRO_SEQ = #{searchProSeq}
+              AND A1.C_ESNTL_ID = #{searchReqEsntlId}
+                </otherwise>
+              </choose>
+        ) A0
+    </select>
+
+    <!-- 수강확인증 목록 카운트 -->
+    <select id="selectStudyCertListCount" parameterType="ArtappmListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTAPPM A1
+          INNER JOIN ARTFILE F
+            ON A1.STUDY_CERT = F.FILE_ID
+            AND F.STTUS_CODE = 'A'
+         WHERE A1.STUDY_CERT IS NOT NULL
+           AND TRIM(A1.STUDY_CERT) != ''
+           <choose>
+             <when test="searchReqId != null and searchReqId != ''">
+           AND A1.REQ_ID = #{searchReqId}
+             </when>
+             <otherwise>
+           AND A1.PRO_ID = #{searchProId}
+           AND A1.PRO_SEQ = #{searchProSeq}
+           AND A1.C_ESNTL_ID = #{searchReqEsntlId}
+             </otherwise>
+           </choose>
+    </select>
+
+    <!-- 수강확인증 상세 조회: 해당 신청 건의 수강확인증 1건 (일자, 내용, 첨부파일). reqId 있으면 REQ_ID, 없으면 복합키+seq -->
+    <select id="selectStudyCertDetail" parameterType="StudyCertDetailRequest" resultType="StudyCertDetailResponse">
+        SELECT F.UPLOAD_DTTM AS UPLOAD_DTTM
+             , COALESCE(F.FILE_DESC, '') AS FILE_DESC
+             , CAST(F.FILE_ID AS CHAR) AS FILE_ID
+             , F.SEQ AS SEQ
+             , COALESCE(F.ORGF_NM, '') AS ORGF_NM
+          FROM ARTAPPM A1
+          INNER JOIN ARTFILE F
+            ON A1.STUDY_CERT = F.FILE_ID
+            AND F.STTUS_CODE = 'A'
+         <where>
+            <choose>
+                <when test="reqId != null and reqId != ''">
+                    A1.REQ_ID = #{reqId}
+                </when>
+                <otherwise>
+                    A1.PRO_ID = #{proId}
+                    AND A1.PRO_SEQ = #{proSeq}
+                    AND A1.C_ESNTL_ID = #{reqEsntlId}
+                </otherwise>
+            </choose>
+            AND F.SEQ = #{seq}
+         </where>
+    </select>
+
+    <!-- 변경이력: f_changlist 프로시저 호출 (aGubun=01, proId, proSeq, reqEsntlId) -->
+    <select id="selectChangeList" parameterType="ChangeListRequest" resultType="ChangeListItemResponse">
+        CALL f_changlist(#{aGubun}, #{proId}, #{proSeq}, #{reqEsntlId})
+    </select>
+
+    <!-- ARTAPMM 전용 REQ_ID 채번 (MAN_0000000000000001 형식) -->
+    <select id="getNextArtapmmReqId" resultType="string">
+        SELECT CONCAT('MAN_', LPAD(COALESCE(SUBSTRING(MAX(REQ_ID), 5, 16), 0) + 1, 16, '0')) AS REQ_ID
+          FROM ARTAPMM
+    </select>
+
+    <!-- ARTAPMM 동일 사업·회차·멘토 활성 건 수 (삭제 제외). excludeReqId 있으면 해당 REQ_ID 제외(수정 시) -->
+    <select id="countArtapmmActiveByProSeqReqEsntlId" parameterType="ArtapmmMentorDuplicateParam" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTAPMM
+         WHERE PRO_ID = #{proId}
+           AND PRO_SEQ = COALESCE(#{proSeq}, 0)
+           AND REQ_ESNTL_ID = #{reqEsntlId}
+           AND (STTUS_CODE IS NULL OR STTUS_CODE != 'D')
+        <if test="excludeReqId != null and excludeReqId != ''">
+           AND REQ_ID != #{excludeReqId}
+        </if>
+    </select>
+
+    <!-- 멘토 신청(ARTAPMM) 단건 — 사용자웹 REQ_ID만 (MY PAGE 멘토 신청 상세). 논리삭제(D) 제외 -->
+    <select id="selectArtapmmApplicationByReqId" parameterType="ArtapmmApplicationByReqIdOnlyParam" resultType="ArtapmmApplicationListItemResponse">
+        SELECT COALESCE(A.REQ_ID, '') AS REQ_ID
+             , COALESCE(A.PRO_ID, '') AS PRO_ID
+             , COALESCE(A.PRO_SEQ, 0) AS PRO_SEQ
+             , COALESCE(P.PRO_NM, '') AS PRO_NM
+             , COALESCE(A.REQ_ESNTL_ID, '') AS REQ_ESNTL_ID
+             , COALESCE(A.REQ_PLAY, '') AS REQ_PLAY
+             , COALESCE(A.REQ_DESC, '') AS REQ_DESC
+             , COALESCE(A.FILE_ID, '') AS FILE_ID
+             , COALESCE(A.RESULT_GB, '') AS RESULT_GB
+             , IFNULL(DATE_FORMAT(A.REQ_DT, '%Y-%m-%d'), '') AS REQ_DT
+             , IFNULL(DATE_FORMAT(A.APRR_DT, '%Y-%m-%d'), '') AS APRR_DT
+             , IFNULL(DATE_FORMAT(A.CHG_DT, '%Y-%m-%d'), '') AS CHG_DT
+             , IFNULL(DATE_FORMAT(A.STOP_DT, '%Y-%m-%d'), '') AS STOP_DT
+             , COALESCE(A.REA_DESC, '') AS REA_DESC
+             , COALESCE(A.COLLEGE_NM, '') AS COLLEGE_NM
+             , COALESCE(A.LEAVE_YN, '') AS LEAVE_YN
+             , COALESCE(A.MAJOR_NM, '') AS MAJOR_NM
+             , COALESCE(A.SCHOOL_LVL, 0) AS SCHOOL_LVL
+             , COALESCE(A.STUDENT_ID, '') AS STUDENT_ID
+             , COALESCE(A.HSCHOOL_NM, '') AS HSCHOOL_NM
+             , COALESCE(A.REQ_REASON, '') AS REQ_REASON
+             , COALESCE(A.CAREER, '') AS CAREER
+             , COALESCE(A.REQ_SUB, '') AS REQ_SUB
+             , COALESCE(A.JOIN_TIME, '') AS JOIN_TIME
+             , COALESCE(A.AGREE1_YN, '') AS AGREE1_YN
+             , COALESCE(A.AGREE2_YN, '') AS AGREE2_YN
+             , COALESCE(A.STTUS_CODE, '') AS STTUS_CODE
+             , COALESCE(A.CHG_USER_ID, '') AS CHG_USER_ID
+             , IFNULL(DATE_FORMAT(A.CRT_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CRT_DATE
+             , IFNULL(DATE_FORMAT(A.CHG_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CHG_DATE
+             , COALESCE(B.USER_SE, '') AS USER_SE
+             , COALESCE(B.USER_ID, '') AS USER_ID
+             , COALESCE(DECRYPT(B.USER_NM), '') AS USER_NM
+             , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(B.USR_TELNO), ''), 'N'), '') AS USR_TELNO
+             , COALESCE(FN_MASK_PHONE(COALESCE(DECRYPT(B.MBTLNUM), ''), 'N'), '') AS MBTLNUM
+             , COALESCE(DECRYPT(B.EMAIL_ADRES), '') AS EMAIL_ADRES
+             , COALESCE(B.BRTHDY, '') AS BRTHDY
+             , COALESCE(B.MBER_STTUS, '') AS MBER_STTUS
+             , COALESCE(TRIM(CONCAT(COALESCE(DECRYPT(B.ZIP), ''), ' ', COALESCE(DECRYPT(B.ADRES), ''), ' ', COALESCE(DECRYPT(B.DETAIL_ADRES), ''))), '') AS FULL_ADRES
+             , COALESCE(B.PROFILE_DESC, '') AS PROFILE_DESC
+          FROM ARTAPMM A
+          LEFT JOIN ARTPROM P ON A.PRO_ID = P.PRO_ID
+          LEFT JOIN ARMUSER B ON A.REQ_ESNTL_ID = B.ESNTL_ID
+         WHERE A.REQ_ID = #{reqId}
+           AND (A.STTUS_CODE IS NULL OR A.STTUS_CODE != 'D')
+    </select>
+
+    <!-- ARTAPMM 멘토 한 건 등록 (목록 저장·멘토 신청 등록 공통; 미입력 컬럼은 NULL/기본값) -->
+    <insert id="insertArtapmm" parameterType="ArtapmmMentorSaveParam">
+        INSERT INTO ARTAPMM (
+            REQ_ID, PRO_ID, PRO_SEQ, REQ_ESNTL_ID,
+            REQ_PLAY, REQ_DESC, FILE_ID, RESULT_GB,
+            REQ_DT, APRR_DT, CHG_DT, STOP_DT, REA_DESC,
+            COLLEGE_NM, LEAVE_YN, MAJOR_NM, SCHOOL_LVL, STUDENT_ID, HSCHOOL_NM,
+            REQ_REASON, CAREER,
+            REQ_SUB, JOIN_TIME, AGREE1_YN, AGREE2_YN,
+            STTUS_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{reqId},
+            #{proId},
+            COALESCE(#{proSeq}, 0),
+            COALESCE(#{reqEsntlId}, ''),
+            #{reqPlay},
+            #{reqDesc},
+            (CASE WHEN #{fileId} IS NULL OR TRIM(#{fileId}) = '' THEN NULL ELSE TRIM(#{fileId}) END),
+            COALESCE(NULLIF(TRIM(#{resultGb}), ''), 'Y'),
+            (CASE WHEN #{reqDt} IS NULL OR TRIM(#{reqDt}) = '' THEN NULL ELSE STR_TO_DATE(LEFT(TRIM(#{reqDt}), 10), '%Y-%m-%d') END),
+            (CASE WHEN #{aprrDt} IS NULL OR TRIM(#{aprrDt}) = '' THEN NULL ELSE STR_TO_DATE(LEFT(TRIM(#{aprrDt}), 10), '%Y-%m-%d') END),
+            (CASE WHEN #{chgDt} IS NULL OR TRIM(#{chgDt}) = '' THEN NULL ELSE STR_TO_DATE(LEFT(TRIM(#{chgDt}), 10), '%Y-%m-%d') END),
+            (CASE WHEN #{stopDt} IS NULL OR TRIM(#{stopDt}) = '' THEN NULL ELSE STR_TO_DATE(LEFT(TRIM(#{stopDt}), 10), '%Y-%m-%d') END),
+            #{reaDesc},
+            #{collegeNm},
+            COALESCE(NULLIF(TRIM(#{leaveYn}), ''), 'N'),
+            #{majorNm},
+            COALESCE(#{schoolLvl}, 0),
+            #{studentId},
+            #{hschoolNm},
+            #{reqReason},
+            #{career},
+            (CASE WHEN #{reqSub} IS NULL OR TRIM(#{reqSub}) = '' THEN NULL ELSE LEFT(TRIM(#{reqSub}), 4) END),
+            (CASE WHEN #{joinTime} IS NULL OR TRIM(#{joinTime}) = '' THEN NULL ELSE LEFT(TRIM(#{joinTime}), 64) END),
+            (CASE WHEN #{agree1Yn} IS NULL OR TRIM(#{agree1Yn}) = '' THEN NULL ELSE LEFT(TRIM(#{agree1Yn}), 1) END),
+            (CASE WHEN #{agree2Yn} IS NULL OR TRIM(#{agree2Yn}) = '' THEN NULL ELSE LEFT(TRIM(#{agree2Yn}), 1) END),
+            COALESCE(NULLIF(TRIM(#{sttusCode}), ''), 'A'),
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+</mapper>

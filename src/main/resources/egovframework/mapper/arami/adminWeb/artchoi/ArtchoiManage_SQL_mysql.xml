@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="artchoiManageDAO">
+    <select id="acquireArtchoiInsertLock" resultType="java.lang.Integer">
+        SELECT GET_LOCK('ARTCHOI_INSERT_LOCK', 10)
+    </select>
+
+    <select id="releaseArtchoiInsertLock" resultType="java.lang.Integer">
+        SELECT RELEASE_LOCK('ARTCHOI_INSERT_LOCK')
+    </select>
+
+    <delete id="deleteAllArtchoi">
+        DELETE FROM ARTCHOI
+    </delete>
+
+    <insert id="insertArtchoiResultGb" parameterType="java.util.List">
+        INSERT INTO ARTCHOI (CHOI_SEQ, RESULT_GB, BASE_ID, ITEM1, ITEM2, ITEM3, ITEM4, ITEM5, ITEM6, ITEM7, ITEM8, ITEM9, ITEM10, ITEM11, ITEM12, ITEM13, ITEM14, ITEM15, ITEM16, ITEM17, ITEM18, ITEM19, ITEM20) 
+        VALUES 
+        <foreach collection="list" item="item" separator="," index="idx">
+        (#{idx} + 1, #{item.resultGb}, #{item.baseId}, #{item.item1}, #{item.item2}, #{item.item3}, #{item.item4}, #{item.item5}, #{item.item6}, #{item.item7}, #{item.item8}, #{item.item9}, #{item.item10}, #{item.item11}, #{item.item12}, #{item.item13}, #{item.item14}, #{item.item15}, #{item.item16}, #{item.item17}, #{item.item18}, #{item.item19}, #{item.item20})
+        </foreach>
+    </insert>
+
+    <update id="updateResultGbByChoiSeqList" parameterType="map">
+        UPDATE ARTCHOI
+        SET RESULT_GB = #{resultGb}
+        WHERE CHOI_SEQ IN
+        <foreach collection="choiSeqList" item="choiSeq" open="(" separator="," close=")">
+            #{choiSeq}
+        </foreach>
+    </update>
+
+    <select id="selectAllArtchoi" resultType="arami.adminWeb.artchoi.service.dto.response.ArtchoiListItemResponse">
+        SELECT CHOI_SEQ
+             , RESULT_GB
+             , BASE_ID
+             , ITEM1
+             , ITEM2
+             , ITEM3
+             , ITEM4
+             , ITEM5
+             , ITEM6
+             , ITEM7
+             , ITEM8
+             , ITEM9
+             , ITEM10
+             , ITEM11
+             , ITEM12
+             , ITEM13
+             , ITEM14
+             , ITEM15
+             , ITEM16
+             , ITEM17
+             , ITEM18
+             , ITEM19
+             , ITEM20
+          FROM ARTCHOI
+         ORDER BY CASE RESULT_GB
+                    WHEN 'Y' THEN 1
+                    WHEN 'R' THEN 2
+                    WHEN 'N' THEN 3
+                    ELSE 4
+                  END
+                , CHOI_SEQ
+    </select>
+</mapper>

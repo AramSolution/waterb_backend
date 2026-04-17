@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="artpromManageDAO">
+
+    <!-- 지원사업 목록 조회 -->
+    <select id="selectArtpromList" parameterType="ArtpromListRequest" resultType="ArtpromDTO">
+        SELECT *
+          FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A1.PRO_ID DESC) AS RNUM
+                 , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                 , COALESCE(A1.PRO_GB, '') AS PRO_GB
+                 , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+                 , CASE WHEN A1.PRO_TYPE = '01' THEN '교육'
+                        WHEN A1.PRO_TYPE = '02' THEN '지원사업'
+                        WHEN A1.PRO_TYPE = '03' THEN '홍보'
+                        ELSE '' END AS PRO_TYPE_NM
+                 , COALESCE(A1.REQ_GB, '') AS REQ_GB
+                 , COALESCE(A1.PRO_NM, '') AS PRO_NM
+                 , COALESCE(A1.PRO_TARGET_NM, '') AS PRO_TARGET_NM
+                 , COALESCE(A1.ETC_NM, '') AS ETC_NM
+                 , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A1.PRO_DEPA), COALESCE(A1.PRO_DEPA, '')) AS PRO_DEPA
+                 , COALESCE(A1.EDU_GB, 'N') AS EDU_GB
+                 , COALESCE(A1.PRO_TARGET, '') AS PRO_TARGET
+                 , COALESCE(A1.BASIC_YN, 'N') AS BASIC_YN
+                 , COALESCE(A1.POOR_YN, 'N') AS POOR_YN
+                 , COALESCE(A1.SINGLE_YN, 'N') AS SINGLE_YN
+                 , COALESCE(DATE_FORMAT(A1.REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+                 , COALESCE(DATE_FORMAT(A1.REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+                 , COALESCE(A1.REC_CNT, 0) AS REC_CNT
+                 , COALESCE(A1.PRO_SUM, '') AS PRO_SUM
+                 , COALESCE(A1.PRO_DESC, '') AS PRO_DESC
+                 , COALESCE(A1.PRO_FILE_ID, '') AS PRO_FILE_ID
+                 , COALESCE(A1.FILE_ID, '') AS FILE_ID
+                 , COALESCE(A1.RUN_STA, '') AS RUN_STA
+                 , CASE
+                  WHEN A1.RUN_STA = '01' THEN '접수예정'
+                  WHEN A1.RUN_STA = '02' THEN '접수중'
+                  WHEN A1.RUN_STA = '04' THEN '접수마감'
+                  WHEN A1.RUN_STA = '99' THEN '취소'
+                  ELSE ''
+			            END AS RUN_STA_NM
+              FROM ARTPROM A1
+             WHERE 1=1
+               AND A1.STTUS_CODE = 'A'
+               <choose>
+               <when test="isMentor != null and isMentor == true">
+               AND UPPER(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(COALESCE(A1.REQ_GB, ''), '|', 4), '|', -1))) = 'Y'
+               </when>
+               <otherwise>
+               AND A1.PRO_GB = #{searchProGb}
+               </otherwise>
+               </choose>
+               <if test="searchRecFromDd != null and searchRecFromDd != '' and searchRecToDd != null and searchRecToDd != ''">
+               AND A1.REC_FROM_DD <![CDATA[<=]]> DATE_FORMAT(#{searchRecToDd}, '%Y-%m-%d')
+               AND A1.REC_TO_DD   <![CDATA[>=]]> DATE_FORMAT(#{searchRecFromDd}, '%Y-%m-%d')
+               </if>
+               <if test="searchRunSta != null and searchRunSta != ''">
+               AND A1.RUN_STA = #{searchRunSta}
+               </if>
+               <if test="searchProNm != null and searchProNm != ''">
+               AND A1.PRO_NM LIKE CONCAT('%', #{searchProNm}, '%')
+               </if>
+          ) A0
+         LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 지원사업 목록 카운트 -->
+    <select id="selectArtpromListCount" parameterType="ArtpromListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTPROM A1
+         WHERE 1=1
+           AND A1.STTUS_CODE = 'A'
+           <choose>
+           <when test="isMentor != null and isMentor == true">
+           AND UPPER(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(COALESCE(A1.REQ_GB, ''), '|', 4), '|', -1))) = 'Y'
+           </when>
+           <otherwise>
+           AND A1.PRO_GB = #{searchProGb}
+           </otherwise>
+           </choose>
+           <if test="searchRecFromDd != null and searchRecFromDd != '' and searchRecToDd != null and searchRecToDd != ''">
+           AND A1.REC_FROM_DD <![CDATA[<=]]> DATE_FORMAT(#{searchRecToDd}, '%Y-%m-%d')
+           AND A1.REC_TO_DD   <![CDATA[>=]]> DATE_FORMAT(#{searchRecFromDd}, '%Y-%m-%d')
+           </if>
+           <if test="searchRunSta != null and searchRunSta != ''">
+           AND A1.RUN_STA = #{searchRunSta}
+           </if>
+           <if test="searchProNm != null and searchProNm != ''">
+           AND A1.PRO_NM LIKE CONCAT('%', #{searchProNm}, '%')
+           </if>
+    </select>
+
+    <!-- 지원사업 엑셀 목록 조회 -->
+    <select id="selectArtpromExcelList" parameterType="ArtpromListRequest" resultType="ArtpromDTO">
+        SELECT *
+          FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A1.PRO_ID DESC) AS RNUM
+                 , COALESCE(A1.PRO_ID, '') AS PRO_ID
+                 , COALESCE(A1.PRO_GB, '') AS PRO_GB
+                 , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+                 , CASE WHEN A1.PRO_TYPE = '01' THEN '교육'
+                        WHEN A1.PRO_TYPE = '02' THEN '지원사업'
+                        WHEN A1.PRO_TYPE = '03' THEN '홍보'
+                        ELSE '' END AS PRO_TYPE_NM
+                 , COALESCE(A1.REQ_GB, '') AS REQ_GB
+                 , COALESCE(A1.PRO_NM, '') AS PRO_NM
+                 , COALESCE(A1.PRO_TARGET_NM, '') AS PRO_TARGET_NM
+                 , COALESCE(A1.ETC_NM, '') AS ETC_NM
+                 , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'EDR007' AND CODE = A1.PRO_DEPA), COALESCE(A1.PRO_DEPA, '')) AS PRO_DEPA
+                 , COALESCE(A1.EDU_GB, 'N') AS EDU_GB
+                 , COALESCE(A1.PRO_TARGET, '') AS PRO_TARGET
+                 , COALESCE(A1.BASIC_YN, 'N') AS BASIC_YN
+                 , COALESCE(A1.POOR_YN, 'N') AS POOR_YN
+                 , COALESCE(A1.SINGLE_YN, 'N') AS SINGLE_YN
+                 , COALESCE(DATE_FORMAT(A1.REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+                 , COALESCE(DATE_FORMAT(A1.REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+                 , COALESCE(A1.REC_CNT, 0) AS REC_CNT
+                 , COALESCE(A1.PRO_SUM, '') AS PRO_SUM
+                 , COALESCE(A1.PRO_DESC, '') AS PRO_DESC
+                 , COALESCE(A1.PRO_FILE_ID, '') AS PRO_FILE_ID
+                 , COALESCE(A1.FILE_ID, '') AS FILE_ID
+                 , COALESCE(A1.RUN_STA, '') AS RUN_STA
+                 , CASE
+                  WHEN A1.RUN_STA = '01' THEN '접수예정'
+                  WHEN A1.RUN_STA = '02' THEN '접수중'
+                  WHEN A1.RUN_STA = '04' THEN '접수마감'
+                  WHEN A1.RUN_STA = '99' THEN '취소'
+                  ELSE ''
+			            END AS RUN_STA_NM
+              FROM ARTPROM A1
+             WHERE 1=1
+               AND A1.STTUS_CODE = 'A'
+               <choose>
+               <when test="isMentor != null and isMentor == true">
+               AND UPPER(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(COALESCE(A1.REQ_GB, ''), '|', 4), '|', -1))) = 'Y'
+               </when>
+               <otherwise>
+               AND A1.PRO_GB = #{searchProGb}
+               </otherwise>
+               </choose>
+               <if test="searchRecFromDd != null and searchRecFromDd != '' and searchRecToDd != null and searchRecToDd != ''">
+               AND A1.REC_FROM_DD <![CDATA[<=]]> DATE_FORMAT(#{searchRecToDd}, '%Y-%m-%d')
+               AND A1.REC_TO_DD   <![CDATA[>=]]> DATE_FORMAT(#{searchRecFromDd}, '%Y-%m-%d')
+               </if>
+               <if test="searchRunSta != null and searchRunSta != ''">
+               AND A1.RUN_STA = #{searchRunSta}
+               </if>
+               <if test="searchProNm != null and searchProNm != ''">
+               AND A1.PRO_NM LIKE CONCAT('%', #{searchProNm}, '%')
+               </if>
+          ) A0
+    </select>
+
+    <!-- 지원사업 상세 조회 -->
+    <select id="selectArtpromDetail" parameterType="ArtpromDetailRequest" resultType="ArtpromDTO">
+        SELECT COALESCE(A1.PRO_ID, '') AS PRO_ID
+             , COALESCE(A1.PRO_GB, '') AS PRO_GB
+             , COALESCE(A1.PRO_TYPE, '') AS PRO_TYPE
+             , CASE WHEN A1.PRO_TYPE = '01' THEN '교육'
+                    WHEN A1.PRO_TYPE = '02' THEN '지원사업'
+                    WHEN A1.PRO_TYPE = '03' THEN '홍보'
+                    ELSE '' END AS PRO_TYPE_NM
+             , COALESCE(A1.REQ_GB, '') AS REQ_GB
+             , COALESCE(A1.PRO_NM, '') AS PRO_NM
+             , COALESCE(A1.PRO_TARGET_NM, '') AS PRO_TARGET_NM
+             , COALESCE(A1.ETC_NM, '') AS ETC_NM
+             , COALESCE(A1.PRO_DEPA, '') AS PRO_DEPA
+             , COALESCE(DECRYPT(A1.PRO_CHARGE), '') AS PRO_CHARGE
+             , COALESCE(DECRYPT(A1.PRO_TEL), '') AS PRO_TEL
+             , COALESCE(A1.PRO_PART, '') AS PRO_PART
+             , COALESCE(DATE_FORMAT(A1.PRO_FROM_DD, '%Y%m%d'), '') AS PRO_FROM_DD
+             , COALESCE(DATE_FORMAT(A1.PRO_TO_DD, '%Y%m%d'), '') AS PRO_TO_DD
+             , COALESCE(A1.PRO_ENQUIRY, '') AS PRO_ENQUIRY
+             , COALESCE(A1.PRO_HOW, '') AS PRO_HOW
+             , COALESCE(A1.PRO_SPACE, '') AS PRO_SPACE
+             , COALESCE(A1.PRO_NUM, '') AS PRO_NUM
+             , COALESCE(A1.PRO_COST, '') AS PRO_COST
+             , COALESCE(A1.PRO_PAGE, '') AS PRO_PAGE
+             , COALESCE(A1.PRO_DESIGN, '') AS PRO_DESIGN
+             , COALESCE(A1.EDU_GB, 'N') AS EDU_GB
+             , COALESCE(A1.PRO_TARGET, '') AS PRO_TARGET
+             , COALESCE(A1.BASIC_YN, 'N') AS BASIC_YN
+             , COALESCE(A1.POOR_YN, 'N') AS POOR_YN
+             , COALESCE(A1.SINGLE_YN, 'N') AS SINGLE_YN
+             , COALESCE(DATE_FORMAT(A1.REC_FROM_DD, '%Y%m%d'), '') AS REC_FROM_DD
+             , COALESCE(DATE_FORMAT(A1.REC_TO_DD, '%Y%m%d'), '') AS REC_TO_DD
+             , COALESCE(A1.REC_CNT, 0) AS REC_CNT
+             , COALESCE(A1.PRO_SUM, '') AS PRO_SUM
+             , COALESCE(A1.PRO_DESC, '') AS PRO_DESC
+             , COALESCE(A1.PRO_FILE_ID, '') AS PRO_FILE_ID
+             , COALESCE(A1.FILE_ID, '') AS FILE_ID
+             , COALESCE(A1.RUN_STA, '') AS RUN_STA
+                 , CASE
+                  WHEN A1.RUN_STA = '01' THEN '접수예정'
+                  WHEN A1.RUN_STA = '02' THEN '접수중'
+                  WHEN A1.RUN_STA = '04' THEN '접수마감'
+                  WHEN A1.RUN_STA = '99' THEN '취소'
+                  ELSE ''
+			            END AS RUN_STA_NM
+             , COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE
+          FROM ARTPROM A1
+         WHERE A1.PRO_ID = #{proId}
+    </select>
+
+    <!-- 지원사업코드(PRO_ID) 채번 -->
+    <select id="getNextProId" parameterType="egovMap" resultType="string">
+        SELECT CONCAT('PRO_', LPAD(COALESCE(SUBSTRING(MAX(A1.PRO_ID), 5, 16), 0) + 1, 16, '0')) AS PRO_ID
+          FROM ARTPROM A1
+    </select>
+
+    <!-- 지원사업 등록 -->
+    <insert id="insertArtprom" parameterType="ArtpromInsertRequest">
+        INSERT INTO ARTPROM (
+            PRO_ID, PRO_GB, PRO_TYPE, REQ_GB, PRO_NM, PRO_TARGET_NM, ETC_NM, EDU_GB,
+            PRO_DEPA, PRO_CHARGE, PRO_TEL, PRO_PART, PRO_FROM_DD, PRO_TO_DD, PRO_ENQUIRY, PRO_HOW, PRO_SPACE,
+            PRO_NUM, PRO_COST, PRO_PAGE, PRO_DESIGN,
+            PRO_TARGET, BASIC_YN, POOR_YN, SINGLE_YN,
+            REC_FROM_DD, REC_TO_DD, REC_CNT, PRO_SUM, PRO_DESC,
+            PRO_FILE_ID, FILE_ID, RUN_STA, STTUS_CODE, CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{proId},
+            #{proGb},
+            #{proType},
+            #{reqGb},
+            #{proNm},
+            #{proTargetNm},
+            #{etcNm},
+            #{eduGb},
+            #{proDepa},
+            ENCRYPT(#{proCharge}),
+            ENCRYPT(#{proTel}),
+            #{proPart},
+            #{proFromDd},
+            #{proToDd},
+            #{proEnquiry},
+            #{proHow},
+            #{proSpace},
+            #{proNum},
+            #{proCost},
+            #{proPage},
+            #{proDesign},
+            #{proTarget},
+            #{basicYn},
+            #{poorYn},
+            #{singleYn},
+            #{recFromDd},
+            #{recToDd},
+            COALESCE(#{recCnt}, 0),
+            #{proSum},
+            #{proDesc},
+            #{proFileId},
+            #{fileId},
+            #{runSta},
+            #{sttusCode},
+            #{UNIQ_ID},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <!-- 지원사업 수정 -->
+    <update id="updateArtprom" parameterType="ArtpromUpdateRequest">
+        UPDATE ARTPROM
+           SET PRO_GB = #{proGb},
+               PRO_TYPE = #{proType},
+               REQ_GB = #{reqGb},
+               PRO_NM = #{proNm},
+               PRO_TARGET_NM = #{proTargetNm},
+               ETC_NM = #{etcNm},
+               PRO_DEPA = #{proDepa},
+               PRO_CHARGE = ENCRYPT(#{proCharge}),
+               PRO_TEL = ENCRYPT(#{proTel}),
+               PRO_PART = #{proPart},
+               PRO_FROM_DD = #{proFromDd},
+               PRO_TO_DD = #{proToDd},
+               PRO_ENQUIRY = #{proEnquiry},
+               PRO_HOW = #{proHow},
+               PRO_SPACE = #{proSpace},
+               PRO_NUM = #{proNum},
+               PRO_COST = #{proCost},
+               PRO_PAGE = #{proPage},
+               PRO_DESIGN = #{proDesign},
+               EDU_GB = #{eduGb},
+               PRO_TARGET = #{proTarget},
+               BASIC_YN = #{basicYn},
+               POOR_YN = #{poorYn},
+               SINGLE_YN = #{singleYn},
+               REC_FROM_DD = #{recFromDd},
+               REC_TO_DD = #{recToDd},
+               REC_CNT = COALESCE(#{recCnt}, 0),
+               PRO_SUM = #{proSum},
+               PRO_DESC = #{proDesc},
+               PRO_FILE_ID = #{proFileId},
+               FILE_ID = #{fileId},
+               RUN_STA = #{runSta},
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE PRO_ID = #{proId}
+    </update>
+
+    <!-- 지원사업 삭제(소프트 삭제: STTUS_CODE = D) -->
+    <update id="deleteArtprom" parameterType="ArtpromDetailRequest">
+        UPDATE ARTPROM
+           SET STTUS_CODE = 'D',
+               CHG_USER_ID = #{UNIQ_ID},
+               CHG_DATE = NOW()
+         WHERE PRO_ID = #{proId}
+    </update>
+
+    <!-- 홍보파일 그룹 비움: 해당 fileId에 파일이 없을 때 ARTPROM.PRO_FILE_ID 초기화 -->
+    <update id="clearProFileId" parameterType="ClearFileIdParam">
+        UPDATE ARTPROM
+           SET PRO_FILE_ID = ''
+         WHERE PRO_ID = #{proId}
+    </update>
+
+    <!-- 첨부파일 그룹 비움: 해당 fileId에 파일이 없을 때 ARTPROM.FILE_ID 초기화 -->
+    <update id="clearFileId" parameterType="ClearFileIdParam">
+        UPDATE ARTPROM
+           SET FILE_ID = ''
+         WHERE PRO_ID = #{proId}
+    </update>
+
+    <!-- 지원사업 일정 + 신청 인원 목록 조회 (ARTPROD + ARTAPPM 집계). 지역연계 진로체험 활동 신청 화면 등에서 사용. -->
+    <select id="selectArtprodListWithApplyCnt" parameterType="ArtpromDetailRequest" resultType="ArtprodScheduleItemResponse">
+        SELECT COALESCE(P.PRO_ID, '') AS PRO_ID,
+               COALESCE(P.PRO_SEQ, 0) AS PRO_SEQ,
+               COALESCE(P.PRO_GB, '') AS PRO_GB,
+               COALESCE((SELECT CODE_NM
+                          FROM LETTCCMMNDETAILCODE
+                         WHERE CODE_ID = 'EDR000'
+                           AND CODE = P.PRO_GB), '') AS PRO_GB_NM,
+               COALESCE(P.SPACE_ID, '') AS SPACE_ID,
+               COALESCE((SELECT CODE_NM
+                          FROM LETTCCMMNDETAILCODE
+                         WHERE CODE_ID = 'EDR004'
+                           AND CODE = P.SPACE_ID), '') AS SPACE_ID_NM,
+               DATE_FORMAT(P.WORK_DATE, '%Y-%m-%d') AS WORK_DATE,
+               DATE_FORMAT(P.START_TIME, '%H:%i') AS START_TIME,
+               DATE_FORMAT(P.END_TIME, '%H:%i') AS END_TIME,
+               RPAD(SUBSTRING(REPLACE(REPLACE(COALESCE(P.WEEK_YN, ''), '|', ''), ' ', ''), 1, 7), 7, 'N') AS WEEK_YN,
+               COALESCE(P.REC_CNT, '') AS REC_CNT,
+               COALESCE(A.APPLY_CNT, 0) AS APPLY_CNT,
+               CONCAT(COALESCE(A.APPLY_CNT, 0), '/', COALESCE(P.REC_CNT, 0)) AS APPLY_CNT_STR,
+               COALESCE(P.ITEM1, '') AS ITEM1,
+               COALESCE(P.ITEM2, '') AS ITEM2,
+               COALESCE(P.ITEM3, '') AS ITEM3,
+               COALESCE(P.ITEM4, '') AS ITEM4,
+               COALESCE(P.USE_YN, 'Y') AS USE_YN
+          FROM ARTPROD P
+          LEFT JOIN (
+               SELECT PRO_ID,
+                      PRO_SEQ,
+                      COUNT(*) AS APPLY_CNT
+                 FROM ARTAPPM
+                WHERE STTUS_CODE IN ('03','04')
+                  AND PRO_ID = #{proId}
+                GROUP BY PRO_ID, PRO_SEQ
+          ) A
+            ON P.PRO_ID = A.PRO_ID
+           AND P.PRO_SEQ = A.PRO_SEQ
+         WHERE P.PRO_ID = #{proId}
+           AND P.STTUS_CODE = 'A'
+         ORDER BY P.PRO_SEQ
+    </select>
+
+</mapper>

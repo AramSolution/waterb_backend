@@ -1,0 +1,742 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="armuserManageDAO">
+
+    <!-- ARMUSER 목록 조회 (공통 사용자, 페이징/검색) -->
+    <select id="selectList" parameterType="ArmuserListRequest" resultType="ArmuserDTO">
+        SELECT *
+          FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+                , COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
+                , COALESCE(A2.USER_ID, '') AS USER_ID
+                , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
+                , COALESCE(DECRYPT(A2.EMAIL_ADRES), '') AS EMAIL_ADRES
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.USR_TELNO), 'N'), '') AS USR_TELNO
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS MBTLNUM
+                , COALESCE(DATE_FORMAT(STR_TO_DATE(A2.BRTHDY, '%Y%m%d'), '%Y-%m-%d'), '') AS BRTHDY
+                , COALESCE(A2.SEXDSTN_CODE, 'M') AS SEXDSTN_CODE
+                , COALESCE(DECRYPT(A2.ZIP), '') AS ZIP
+                , COALESCE(DECRYPT(A2.ADRES_LOT), '') AS ADRES_LOT
+                , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
+                , COALESCE(DECRYPT(A2.FXNUM), '') AS FXNUM
+                , COALESCE(A2.MBER_STTUS, '') AS MBER_STTUS
+                , CASE A2.MBER_STTUS
+                    WHEN 'A' THEN '대기'
+                    WHEN 'P' THEN '사용'
+                    WHEN 'D' THEN '탈퇴'
+                    ELSE A2.MBER_STTUS
+                  END AS MBER_STTUS_NM
+                , COALESCE(DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d'), '') AS SBSCRB_DE
+                , COALESCE(DATE_FORMAT(A2.SECSN_DE, '%Y-%m-%d'), '') AS SECSN_DE
+                , COALESCE(IF(A2.LOCK_AT = 'Y', '잠금', '해제'), '해제') AS LOCK_AT
+                , COALESCE(A2.USER_SE, '') AS USER_SE
+                , COALESCE(DATE_FORMAT(A2.CHG_LAST_DT, '%Y-%m-%d %H:%i:%s'), '') AS CHG_LAST_DT
+                , COALESCE(DECRYPT(A2.IHIDNUM), A2.IHIDNUM, '') AS IHIDNUM
+                , COALESCE(A2.SCHOOL_ID, '') AS SCHOOL_ID
+                , COALESCE(A2.SCHOOL_GB, '') AS SCHOOL_GB
+                , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(A2.SCHOOL_LVL, 0) AS SCHOOL_LVL
+                , COALESCE(A2.SCHOOL_NO, 0) AS SCHOOL_NO
+                , COALESCE(A2.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+                , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'ARM002' AND CODE = A2.PAY_BANK_CODE), '') AS PAY_BANK_CODE_NM
+                , COALESCE(DECRYPT(A2.PAY_BANK), '') AS PAY_BANK
+                , COALESCE(DECRYPT(A2.HOLDER_NM), '') AS HOLDER_NM
+                , COALESCE(A2.GROUP_ID, '') AS GROUP_ID
+                , COALESCE(A2.ORGNZT_ID, '') AS ORGNZT_ID
+                , COALESCE(A2.INDUTY_CODE, '') AS INDUTY_CODE
+                , COALESCE(A2.BIZRNO, '') AS BIZRNO
+                , COALESCE(A2.ENTRPRS_SE_CODE, '') AS ENTRPRS_SE_CODE
+                , COALESCE(A2.CXFC, '') AS CXFC
+                , COALESCE(A2.PSTINST_CODE, '') AS PSTINST_CODE
+                , COALESCE(A2.OFCPS_NM, '') AS OFCPS_NM
+                , COALESCE(A2.EMPL_NO, '') AS EMPL_NO
+                , COALESCE(A2.APPLCNT_NM, '') AS APPLCNT_NM
+                , COALESCE(A2.CRTFC_DN_VALUE, '') AS CRTFC_DN_VALUE
+                , COALESCE(A2.CRTFC_CN_VALUE, '') AS CRTFC_CN_VALUE
+                , COALESCE(A2.TOKEN_ID, '') AS TOKEN_ID
+                , A2.LOCK_CNT AS LOCK_CNT
+                , COALESCE(DATE_FORMAT(A2.LOCK_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS LOCK_LAST_PNTTM
+                , COALESCE(DATE_FORMAT(A2.CHG_PWD_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS CHG_PWD_LAST_PNTTM
+                , COALESCE(A2.TERMS1_YN, 'N') AS TERMS1_YN
+                , COALESCE(A2.TERMS2_YN, 'N') AS TERMS2_YN
+                , COALESCE(A2.TERMS3_YN, 'N') AS TERMS3_YN
+                , COALESCE(A2.TERMS4_YN, 'N') AS TERMS4_YN
+                , COALESCE(A2.NOTICE_YN, 'N') AS NOTICE_YN
+                , COALESCE(A2.EVENT_NOTI_YN, 'N') AS EVENT_NOTI_YN
+                , COALESCE(A2.MAIL_NOTI_YN, 'N') AS MAIL_NOTI_YN
+                , COALESCE(A2.SMS_NOTI_YN, 'N') AS SMS_NOTI_YN
+                , COALESCE(A2.CERT_YN, 'N') AS CERT_YN
+                , COALESCE(DATE_FORMAT(A2.CERT_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CERT_DATE
+                , COALESCE(A2.PROFILE, '') AS PROFILE
+                , COALESCE(A2.PROFILE_GB, '') AS PROFILE_GB
+                , COALESCE(A2.TEST_YN, 'N') AS TEST_YN
+                , COALESCE(A2.SESSION_KEY, '') AS SESSION_KEY
+                , COALESCE(DATE_FORMAT(A2.SESSION_LIMIT, '%Y-%m-%d %H:%i:%s'), '') AS SESSION_LIMIT
+                , COALESCE(DATE_FORMAT(A2.APPROVE_DE, '%Y-%m-%d'), '') AS APPROVE_DE
+                , COALESCE(A2.USER_PIC, '') AS USER_PIC
+                , COALESCE(A2.CITIZEN_YN, 'N') AS CITIZEN_YN
+                , COALESCE(A2.SINGLE_YN, 'N') AS SINGLE_YN
+                , COALESCE(A2.MINOR_YN, 'N') AS MINOR_YN
+                , COALESCE(A2.BASIC_YN, 'N') AS BASIC_YN
+                , COALESCE(A2.POOR_YN, 'N') AS POOR_YN
+                , CASE
+                    WHEN A2.BASIC_YN = 'Y' AND A2.POOR_YN = 'Y' THEN '기초생활수급자, 차상위계층'
+                    WHEN A2.BASIC_YN = 'Y' THEN '기초생활수급자'
+                    WHEN A2.POOR_YN = 'Y' THEN '차상위계층'
+                    ELSE ''
+                  END AS LOW_INCOME_NM
+                , COALESCE(A2.FARM_YN, 'N') AS FARM_YN
+                , COALESCE(A2.ATTA_FILE, '') AS ATTA_FILE
+                , COALESCE(A2.SUBJECT_DESC, '') AS SUBJECT_DESC
+                , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
+                , COALESCE(A2.BIZNO_FILE, '') AS BIZNO_FILE
+                , COALESCE(A2.RELATION_GB, 'M') AS RELATION_GB
+                , CASE A2.RELATION_GB
+                    WHEN 'F' THEN '부'
+                    WHEN 'M' THEN '모'
+                    WHEN 'E' THEN '기타'
+                    ELSE ''
+                  END AS RELATION_GB_NM
+                , COALESCE(A2.FARM_DESC, '') AS FARM_DESC
+              FROM ARMUSER A2
+             WHERE 1=1
+               <if test="userSe != null and userSe != ''">
+               AND A2.USER_SE = #{userSe}
+               </if>
+               <if test='searchCondition == "1"'>
+               AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test='searchCondition == "2"'>
+               AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test='searchCondition == "3"'>
+               AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test="mberSttus != null and mberSttus != ''">
+               AND A2.MBER_STTUS = #{mberSttus}
+               </if>
+          ) A1
+         LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- ARMUSER 엑셀 목록 조회 (페이징 없음, 검색 조건만 적용) -->
+    <select id="selectExcelList" parameterType="ArmuserListRequest" resultType="ArmuserDTO">
+        SELECT *
+          FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+                , COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
+                , COALESCE(A2.USER_ID, '') AS USER_ID
+                , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
+                , COALESCE(DECRYPT(A2.EMAIL_ADRES), '') AS EMAIL_ADRES
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.USR_TELNO), 'N'), '') AS USR_TELNO
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS MBTLNUM
+                , COALESCE(DATE_FORMAT(STR_TO_DATE(A2.BRTHDY, '%Y%m%d'), '%Y-%m-%d'), '') AS BRTHDY
+                , COALESCE(A2.SEXDSTN_CODE, 'M') AS SEXDSTN_CODE
+                , COALESCE(DECRYPT(A2.ZIP), '') AS ZIP
+                , COALESCE(DECRYPT(A2.ADRES_LOT), '') AS ADRES_LOT
+                , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
+                , COALESCE(DECRYPT(A2.FXNUM), '') AS FXNUM
+                , COALESCE(A2.MBER_STTUS, '') AS MBER_STTUS
+                , CASE A2.MBER_STTUS
+                    WHEN 'A' THEN '대기'
+                    WHEN 'P' THEN '사용'
+                    WHEN 'D' THEN '탈퇴'
+                    ELSE A2.MBER_STTUS
+                  END AS MBER_STTUS_NM
+                , COALESCE(DATE_FORMAT(A2.SBSCRB_DE, '%Y-%m-%d'), '') AS SBSCRB_DE
+                , COALESCE(DATE_FORMAT(A2.SECSN_DE, '%Y-%m-%d'), '') AS SECSN_DE
+                , COALESCE(IF(A2.LOCK_AT = 'Y', '잠금', '해제'), '해제') AS LOCK_AT
+                , COALESCE(A2.USER_SE, '') AS USER_SE
+                , COALESCE(DATE_FORMAT(A2.CHG_LAST_DT, '%Y-%m-%d %H:%i:%s'), '') AS CHG_LAST_DT
+                , COALESCE(DECRYPT(A2.IHIDNUM), A2.IHIDNUM, '') AS IHIDNUM
+                , COALESCE(A2.SCHOOL_ID, '') AS SCHOOL_ID
+                , COALESCE(A2.SCHOOL_GB, '') AS SCHOOL_GB
+                , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(A2.SCHOOL_LVL, 0) AS SCHOOL_LVL
+                , COALESCE(A2.SCHOOL_NO, 0) AS SCHOOL_NO
+                , COALESCE(A2.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+                , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'ARM002' AND CODE = A2.PAY_BANK_CODE), '') AS PAY_BANK_CODE_NM
+                , COALESCE(DECRYPT(A2.PAY_BANK), '') AS PAY_BANK
+                , COALESCE(DECRYPT(A2.HOLDER_NM), '') AS HOLDER_NM
+                , COALESCE(A2.GROUP_ID, '') AS GROUP_ID
+                , COALESCE(A2.ORGNZT_ID, '') AS ORGNZT_ID
+                , COALESCE(A2.INDUTY_CODE, '') AS INDUTY_CODE
+                , COALESCE(A2.BIZRNO, '') AS BIZRNO
+                , COALESCE(A2.ENTRPRS_SE_CODE, '') AS ENTRPRS_SE_CODE
+                , COALESCE(A2.CXFC, '') AS CXFC
+                , COALESCE(A2.PSTINST_CODE, '') AS PSTINST_CODE
+                , COALESCE(A2.OFCPS_NM, '') AS OFCPS_NM
+                , COALESCE(A2.EMPL_NO, '') AS EMPL_NO
+                , COALESCE(A2.APPLCNT_NM, '') AS APPLCNT_NM
+                , COALESCE(A2.CRTFC_DN_VALUE, '') AS CRTFC_DN_VALUE
+                , COALESCE(A2.CRTFC_CN_VALUE, '') AS CRTFC_CN_VALUE
+                , COALESCE(A2.TOKEN_ID, '') AS TOKEN_ID
+                , A2.LOCK_CNT AS LOCK_CNT
+                , COALESCE(DATE_FORMAT(A2.LOCK_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS LOCK_LAST_PNTTM
+                , COALESCE(DATE_FORMAT(A2.CHG_PWD_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS CHG_PWD_LAST_PNTTM
+                , COALESCE(A2.TERMS1_YN, 'N') AS TERMS1_YN
+                , COALESCE(A2.TERMS2_YN, 'N') AS TERMS2_YN
+                , COALESCE(A2.TERMS3_YN, 'N') AS TERMS3_YN
+                , COALESCE(A2.TERMS4_YN, 'N') AS TERMS4_YN
+                , COALESCE(A2.NOTICE_YN, 'N') AS NOTICE_YN
+                , COALESCE(A2.EVENT_NOTI_YN, 'N') AS EVENT_NOTI_YN
+                , COALESCE(A2.MAIL_NOTI_YN, 'N') AS MAIL_NOTI_YN
+                , COALESCE(A2.SMS_NOTI_YN, 'N') AS SMS_NOTI_YN
+                , COALESCE(A2.CERT_YN, 'N') AS CERT_YN
+                , COALESCE(DATE_FORMAT(A2.CERT_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CERT_DATE
+                , COALESCE(A2.PROFILE, '') AS PROFILE
+                , COALESCE(A2.PROFILE_GB, '') AS PROFILE_GB
+                , COALESCE(A2.TEST_YN, 'N') AS TEST_YN
+                , COALESCE(A2.SESSION_KEY, '') AS SESSION_KEY
+                , COALESCE(DATE_FORMAT(A2.SESSION_LIMIT, '%Y-%m-%d %H:%i:%s'), '') AS SESSION_LIMIT
+                , COALESCE(DATE_FORMAT(A2.APPROVE_DE, '%Y-%m-%d'), '') AS APPROVE_DE
+                , COALESCE(A2.USER_PIC, '') AS USER_PIC
+                , COALESCE(A2.CITIZEN_YN, 'N') AS CITIZEN_YN
+                , COALESCE(A2.SINGLE_YN, 'N') AS SINGLE_YN
+                , COALESCE(A2.MINOR_YN, 'N') AS MINOR_YN
+                , COALESCE(A2.BASIC_YN, 'N') AS BASIC_YN
+                , COALESCE(A2.POOR_YN, 'N') AS POOR_YN
+                , CASE
+                    WHEN A2.BASIC_YN = 'Y' AND A2.POOR_YN = 'Y' THEN '기초생활수급자, 차상위계층'
+                    WHEN A2.BASIC_YN = 'Y' THEN '기초생활수급자'
+                    WHEN A2.POOR_YN = 'Y' THEN '차상위계층'
+                    ELSE ''
+                  END AS LOW_INCOME_NM
+                , COALESCE(A2.FARM_YN, 'N') AS FARM_YN
+                , COALESCE(A2.ATTA_FILE, '') AS ATTA_FILE
+                , COALESCE(A2.SUBJECT_DESC, '') AS SUBJECT_DESC
+                , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
+                , COALESCE(A2.BIZNO_FILE, '') AS BIZNO_FILE
+                , COALESCE(A2.RELATION_GB, 'M') AS RELATION_GB
+                , CASE A2.RELATION_GB
+                    WHEN 'F' THEN '부'
+                    WHEN 'M' THEN '모'
+                    WHEN 'E' THEN '기타'
+                    ELSE ''
+                  END AS RELATION_GB_NM
+                , COALESCE(A2.FARM_DESC, '') AS FARM_DESC
+              FROM ARMUSER A2
+             WHERE 1=1
+               <if test="userSe != null and userSe != ''">
+               AND A2.USER_SE = #{userSe}
+               </if>
+               <if test='searchCondition == "1"'>
+               AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test='searchCondition == "2"'>
+               AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test='searchCondition == "3"'>
+               AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+               </if>
+               <if test="mberSttus != null and mberSttus != ''">
+               AND A2.MBER_STTUS = #{mberSttus}
+               </if>
+          ) A1
+    </select>
+
+    <!-- ARMUSER 목록 건수 -->
+    <select id="selectListCount" parameterType="ArmuserListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARMUSER A2
+         WHERE 1=1
+           <if test="userSe != null and userSe != ''">
+           AND A2.USER_SE = #{userSe}
+           </if>
+           <if test='searchCondition == "1"'>
+           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%')
+           </if>
+           <if test='searchCondition == "2"'>
+           AND A2.USER_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+           </if>
+           <if test='searchCondition == "3"'>
+           AND DECRYPT(A2.MBTLNUM) LIKE CONCAT('%', #{searchKeyword}, '%')
+           </if>
+           <if test="mberSttus != null and mberSttus != ''">
+           AND A2.MBER_STTUS = #{mberSttus}
+           </if>
+    </select>
+
+    <!-- 사용자웹 학원조회: 정상 학원(ANR, P) 전부 + 과목(ARTEDUD 콤마, 없으면 공백) -->
+    <select id="selectAcademyListForUserWeb" parameterType="AcademyListForUserRequest" resultType="AcademyListForUserItem">
+        SELECT *
+          FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
+                , COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
+                , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
+                , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
+                , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
+                , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
+                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS USR_TELNO
+                , COALESCE(
+                    (SELECT GROUP_CONCAT(DISTINCT D.SUB_NM ORDER BY D.SUB_NM SEPARATOR ',')
+                     FROM ARTEDUM AM
+                     INNER JOIN ARTEDUD D ON D.EDU_ESNTL_ID = AM.EDU_ESNTL_ID AND D.EDU_GB = AM.EDU_GB AND D.STTUS_CODE = 'A'
+                     WHERE AM.EDU_ESNTL_ID = A2.ESNTL_ID AND AM.STTUS_CODE = 'A'),
+                    ''
+                  ) AS SUB_NM_LIST
+                , COALESCE(A2.USER_PIC, '') AS USER_PIC
+                , (SELECT MIN(F.SEQ) FROM ARTFILE F WHERE F.FILE_ID = A2.USER_PIC AND TRIM(COALESCE(A2.USER_PIC, '')) != '') AS USER_PIC_SEQ
+                , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
+              FROM ARMUSER A2
+             WHERE 1=1
+               AND A2.USER_SE = 'ANR'
+               AND A2.MBER_STTUS = 'P'
+               <if test='searchCondition == "1" and searchKeyword != null and searchKeyword != ""'>
+               AND (DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%') OR A2.SCHOOL_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
+               </if>
+          ) A1
+         LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <select id="selectAcademyListForUserWebCount" parameterType="AcademyListForUserRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARMUSER A2
+         WHERE 1=1
+           AND A2.USER_SE = 'ANR'
+           AND A2.MBER_STTUS = 'P'
+           <if test='searchCondition == "1" and searchKeyword != null and searchKeyword != ""'>
+           AND (DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%') OR A2.SCHOOL_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
+           </if>
+    </select>
+
+    <!-- 본인인증 완료 시 수신한 DI(개인식별코드) - ARMUSER.CRTFC_DN_VALUE 조회 존재 여부 확인 -->
+    <select id="selectCrtfcDnValueCheck" parameterType="string" resultType="ArmuserCrtfcDnValueCheckResponse">
+        SELECT 1 AS exist
+          FROM armuser a2 
+        WHERE 1=1
+          <if test="_parameter != null and _parameter != ''">
+          AND a2.CRTFC_DN_VALUE = #{_parameter}
+          </if>
+        LIMIT 1
+    </select>
+
+    <!-- 회원가입 시 아이디 중복 체크 - ARMUSER.USER_ID 조회 존재 여부 확인 -->
+    <select id="selectUserIdCheck" parameterType="string" resultType="ArmuserUserIdCheckResponse">
+        SELECT 1 AS exist
+          FROM armuser a2 
+        WHERE 1=1
+          <if test="_parameter != null and _parameter != ''">
+          AND a2.USER_ID = #{_parameter}
+          </if>
+        LIMIT 1
+    </select>
+
+    <!-- ARMUSER 상세 조회 (esntlId) - 테이블 컬럼 전부 조회 -->
+    <select id="selectDetail" parameterType="ArmuserDetailRequest" resultType="ArmuserDTO">
+        SELECT COALESCE(A1.ESNTL_ID, '') AS ESNTL_ID
+             , COALESCE(A1.USER_ID, '') AS USER_ID
+             , COALESCE(DECRYPT(A1.USER_NM), '') AS USER_NM
+             , COALESCE(DECRYPT(A1.EMAIL_ADRES), '') AS EMAIL_ADRES
+             , COALESCE(FN_MASK_PHONE(DECRYPT(A1.USR_TELNO), 'N'), '') AS USR_TELNO
+             , COALESCE(FN_MASK_PHONE(DECRYPT(A1.MBTLNUM), 'N'), '') AS MBTLNUM
+             , COALESCE(DATE_FORMAT(STR_TO_DATE(A1.BRTHDY, '%Y%m%d'), '%Y-%m-%d'), '') AS BRTHDY
+             , COALESCE(DECRYPT(A1.IHIDNUM), A1.IHIDNUM, '') AS IHIDNUM
+             , COALESCE(A1.SEXDSTN_CODE, 'M') AS SEXDSTN_CODE
+             , COALESCE(DECRYPT(A1.ZIP), '') AS ZIP
+             , COALESCE(DECRYPT(A1.ADRES_LOT), '') AS ADRES_LOT
+             , COALESCE(DECRYPT(A1.ADRES), '') AS ADRES
+             , COALESCE(DECRYPT(A1.DETAIL_ADRES), '') AS DETAIL_ADRES
+             , COALESCE(FN_MASK_PHONE(DECRYPT(A1.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
+             , COALESCE(DECRYPT(A1.FXNUM), '') AS FXNUM
+             , COALESCE(A1.SCHOOL_ID, '') AS SCHOOL_ID
+             , COALESCE(A1.SCHOOL_GB, '') AS SCHOOL_GB
+             , COALESCE(A1.SCHOOL_NM, '') AS SCHOOL_NM
+             , COALESCE(A1.SCHOOL_LVL, 0) AS SCHOOL_LVL
+             , COALESCE(A1.SCHOOL_NO, 0) AS SCHOOL_NO
+             , COALESCE(A1.PAY_BANK_CODE, '') AS PAY_BANK_CODE
+             , COALESCE((SELECT CODE_NM FROM LETTCCMMNDETAILCODE WHERE CODE_ID = 'ARM002' AND CODE = A1.PAY_BANK_CODE), '') AS PAY_BANK_CODE_NM
+             , COALESCE(DECRYPT(A1.PAY_BANK), '') AS PAY_BANK
+             , COALESCE(DECRYPT(A1.HOLDER_NM), '') AS HOLDER_NM
+             , COALESCE(A1.MBER_STTUS, '') AS MBER_STTUS
+             , CASE A1.MBER_STTUS
+                 WHEN 'A' THEN '대기'
+                 WHEN 'P' THEN '사용'
+                 WHEN 'D' THEN '탈퇴'
+                 ELSE A1.MBER_STTUS
+               END AS MBER_STTUS_NM
+             , COALESCE(DATE_FORMAT(A1.SBSCRB_DE, '%Y-%m-%d'), '') AS SBSCRB_DE
+             , COALESCE(DATE_FORMAT(A1.SECSN_DE, '%Y-%m-%d'), '') AS SECSN_DE
+             , COALESCE(IF(A1.LOCK_AT = 'Y', '잠금', '해제'), '해제') AS LOCK_AT
+             , COALESCE(A1.USER_SE, '') AS USER_SE
+             , COALESCE(DATE_FORMAT(A1.CHG_LAST_DT, '%Y-%m-%d %H:%i:%s'), '') AS CHG_LAST_DT
+             , COALESCE(A1.GROUP_ID, '') AS GROUP_ID
+             , COALESCE(A1.ORGNZT_ID, '') AS ORGNZT_ID
+             , COALESCE(A1.INDUTY_CODE, '') AS INDUTY_CODE
+             , COALESCE(A1.BIZRNO, '') AS BIZRNO
+             , COALESCE(A1.ENTRPRS_SE_CODE, '') AS ENTRPRS_SE_CODE
+             , COALESCE(A1.CXFC, '') AS CXFC
+             , COALESCE(A1.PSTINST_CODE, '') AS PSTINST_CODE
+             , COALESCE(A1.OFCPS_NM, '') AS OFCPS_NM
+             , COALESCE(A1.EMPL_NO, '') AS EMPL_NO
+             , COALESCE(A1.APPLCNT_NM, '') AS APPLCNT_NM
+             , COALESCE(A1.CRTFC_DN_VALUE, '') AS CRTFC_DN_VALUE
+             , COALESCE(A1.CRTFC_CN_VALUE, '') AS CRTFC_CN_VALUE
+             , COALESCE(A1.TOKEN_ID, '') AS TOKEN_ID
+             , A1.LOCK_CNT AS LOCK_CNT
+             , COALESCE(DATE_FORMAT(A1.LOCK_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS LOCK_LAST_PNTTM
+             , COALESCE(DATE_FORMAT(A1.CHG_PWD_LAST_PNTTM, '%Y-%m-%d %H:%i:%s'), '') AS CHG_PWD_LAST_PNTTM
+             , COALESCE(A1.TERMS1_YN, 'N') AS TERMS1_YN
+             , COALESCE(A1.TERMS2_YN, 'N') AS TERMS2_YN
+             , COALESCE(A1.TERMS3_YN, 'N') AS TERMS3_YN
+             , COALESCE(A1.TERMS4_YN, 'N') AS TERMS4_YN
+             , COALESCE(A1.NOTICE_YN, 'N') AS NOTICE_YN
+             , COALESCE(A1.EVENT_NOTI_YN, 'N') AS EVENT_NOTI_YN
+             , COALESCE(A1.MAIL_NOTI_YN, 'N') AS MAIL_NOTI_YN
+             , COALESCE(A1.SMS_NOTI_YN, 'N') AS SMS_NOTI_YN
+            , COALESCE(A1.OAUTH_GB, '') AS OAUTH_GB
+            , COALESCE(A1.NAVER_AUTH_ID, '') AS NAVER_AUTH_ID
+            , COALESCE(A1.KAKAO_AUTH_ID, '') AS KAKAO_AUTH_ID
+             , COALESCE(A1.CERT_YN, 'N') AS CERT_YN
+             , COALESCE(DATE_FORMAT(A1.CERT_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CERT_DATE
+             , COALESCE(A1.PROFILE, '') AS PROFILE
+             , COALESCE(A1.PROFILE_GB, '') AS PROFILE_GB
+             , COALESCE(A1.TEST_YN, 'N') AS TEST_YN
+             , COALESCE(A1.SESSION_KEY, '') AS SESSION_KEY
+             , COALESCE(DATE_FORMAT(A1.SESSION_LIMIT, '%Y-%m-%d %H:%i:%s'), '') AS SESSION_LIMIT
+             , COALESCE(DATE_FORMAT(A1.APPROVE_DE, '%Y-%m-%d'), '') AS APPROVE_DE
+             , COALESCE(A1.USER_PIC, '') AS USER_PIC
+             , COALESCE(A1.CITIZEN_YN, 'N') AS CITIZEN_YN
+             , COALESCE(A1.SINGLE_YN, 'N') AS SINGLE_YN
+             , COALESCE(A1.MINOR_YN, 'N') AS MINOR_YN
+             , COALESCE(A1.BASIC_YN, 'N') AS BASIC_YN
+             , COALESCE(A1.POOR_YN, 'N') AS POOR_YN
+             , CASE
+                   WHEN A1.BASIC_YN = 'Y' AND A1.POOR_YN = 'Y' THEN '기초생활수급자, 차상위계층'
+                   WHEN A1.BASIC_YN = 'Y' THEN '기초생활수급자'
+                   WHEN A1.POOR_YN = 'Y' THEN '차상위계층'
+                   ELSE ''
+                 END AS LOW_INCOME_NM
+             , COALESCE(A1.FARM_YN, 'N') AS FARM_YN
+             , COALESCE(A1.ATTA_FILE, '') AS ATTA_FILE
+             , COALESCE(A1.SUBJECT_DESC, '') AS SUBJECT_DESC
+             , COALESCE(A1.PROFILE_DESC, '') AS PROFILE_DESC
+             , COALESCE(A1.BIZNO_FILE, '') AS BIZNO_FILE
+             , COALESCE(A1.RELATION_GB, 'M') AS RELATION_GB
+             , CASE A1.RELATION_GB
+                    WHEN 'F' THEN '부'
+                    WHEN 'M' THEN '모'
+                    WHEN 'E' THEN '기타'
+                    ELSE ''
+                  END AS RELATION_GB_NM
+             , COALESCE(A1.FARM_DESC, '') AS FARM_DESC
+          FROM ARMUSER A1
+         WHERE A1.ESNTL_ID = #{esntlId}
+    </select>
+
+    <!-- userWeb 메인(학원)용 학원 상세 조회: subjects은 ARTEDUM/ARTEDUD group_concat -->
+    <select id="selectAcademyMainDetail" parameterType="ArmuserDetailRequest" resultType="ArmuserDTO">
+        SELECT
+            COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
+          , COALESCE(A2.CXFC, '') AS CXFC
+          , COALESCE(A2.BIZRNO, '') AS BIZRNO
+          , COALESCE(DECRYPT(A2.FXNUM), '') AS FXNUM
+          , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
+          , COALESCE(DECRYPT(A2.EMAIL_ADRES), '') AS EMAIL_ADRES
+          , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
+          , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
+          , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
+          , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
+          , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS MBTLNUM
+          , COALESCE(
+                (
+                  SELECT GROUP_CONCAT(DISTINCT D.SUB_NM ORDER BY D.SUB_NM SEPARATOR ',')
+                    FROM ARTEDUM AM
+                   INNER JOIN ARTEDUD D
+                      ON D.EDU_ESNTL_ID = AM.EDU_ESNTL_ID
+                     AND D.EDU_GB = AM.EDU_GB
+                     AND D.STTUS_CODE = 'A'
+                   WHERE AM.EDU_ESNTL_ID = A2.ESNTL_ID
+                     AND AM.STTUS_CODE = 'A'
+                ),
+                ''
+            ) AS SUBJECT_DESC
+          , COALESCE(A2.USER_PIC, '') AS USER_PIC
+          , (SELECT MIN(F.SEQ)
+               FROM ARTFILE F
+              WHERE F.FILE_ID = A2.USER_PIC
+                AND TRIM(COALESCE(A2.USER_PIC, '')) != ''
+            ) AS USER_PIC_SEQ
+          , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
+          , COALESCE(A2.OAUTH_GB, '') AS OAUTH_GB
+          , COALESCE(A2.NAVER_AUTH_ID, '') AS NAVER_AUTH_ID
+          , COALESCE(A2.KAKAO_AUTH_ID, '') AS KAKAO_AUTH_ID
+        FROM ARMUSER A2
+        WHERE 1=1
+          AND A2.USER_SE = 'ANR'
+          AND A2.ESNTL_ID = #{esntlId}
+    </select>
+
+    <!-- ARMUSER 등록 -->
+    <insert id="insertArmuser" parameterType="ArmuserInsertRequest">
+        INSERT INTO ARMUSER (
+            ESNTL_ID,
+            USER_SE,
+            USER_ID,
+            PASSWORD,
+            PASSWORD_HINT,
+            PASSWORD_CNSR,
+            USER_NM,
+            IHIDNUM,
+            USR_TELNO,
+            OFFM_TELNO,
+            FXNUM,
+            MBTLNUM,
+            EMAIL_ADRES,
+            ZIP,
+            ADRES_LOT,
+            ADRES,
+            DETAIL_ADRES,
+            BRTHDY,
+            SEXDSTN_CODE,
+            MBER_STTUS,
+            SBSCRB_DE,
+            CHG_LAST_DT,
+            GROUP_ID,
+            ORGNZT_ID,
+            INDUTY_CODE,
+            BIZRNO,
+            ENTRPRS_SE_CODE,
+            CXFC,
+            PSTINST_CODE,
+            OFCPS_NM,
+            EMPL_NO,
+            APPLCNT_NM,
+            SCHOOL_ID,
+            SCHOOL_GB,
+            SCHOOL_NM,
+            SCHOOL_LVL,
+            SCHOOL_NO,
+            PAY_BANK_CODE,
+            PAY_BANK,
+            HOLDER_NM,
+            SINGLE_YN,
+            BASIC_YN,
+            POOR_YN,
+            CERT_YN,
+            CERT_DATE,
+            CRTFC_DN_VALUE,
+            PROFILE,
+            PROFILE_GB,
+            TEST_YN,
+            SESSION_KEY,
+            SESSION_LIMIT,
+            APPROVE_DE,
+            USER_PIC,
+            CITIZEN_YN,
+            MINOR_YN,
+            FARM_YN,
+            ATTA_FILE,
+            SUBJECT_DESC,
+            PROFILE_DESC,
+            BIZNO_FILE,
+            RELATION_GB,
+            FARM_DESC,
+            TERMS1_YN,
+            TERMS2_YN,
+            TERMS3_YN,
+            TERMS4_YN,
+            NOTICE_YN,
+            EVENT_NOTI_YN,
+            MAIL_NOTI_YN,
+            SMS_NOTI_YN,
+            OAUTH_GB,
+            NAVER_AUTH_ID,
+            KAKAO_AUTH_ID
+        ) VALUES (
+            #{esntlId},
+            #{userSe},
+            #{userId},
+            #{password},
+            #{passwordHint},
+            #{passwordCnsr},
+            ENCRYPT(#{userNm}),
+            ENCRYPT(#{ihidnum}),
+            ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+            ENCRYPT(REPLACE(#{offmTelno}, '-', '')),
+            ENCRYPT(#{fxnum}),
+            ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+            ENCRYPT(#{emailAdres}),
+            ENCRYPT(#{zip}),
+            ENCRYPT(#{adresLot}),
+            ENCRYPT(#{adres}),
+            ENCRYPT(#{detailAdres}),
+            REPLACE(REPLACE(REPLACE(#{brthdy}, '-', ''), ' ', ''), '.', ''),
+            #{sexdstnCode},
+            COALESCE(#{mberSttus}, 'P'),
+            <choose><when test="sbscrbDe != null and sbscrbDe != ''">#{sbscrbDe}</when><otherwise>NULL</otherwise></choose>,
+            NOW(),
+            #{groupId},
+            #{orgnztId},
+            #{indutyCode},
+            #{bizrno},
+            #{entrpsSeCode},
+            #{cxfc},
+            #{pstinstCode},
+            #{ofcpsNm},
+            #{emplNo},
+            #{applcntNm},
+            #{schoolId},
+            #{schoolGb},
+            #{schoolNm},
+            #{schoolLvl},
+            #{schoolNo},
+            #{payBankCode},
+            ENCRYPT(#{payBank}),
+            ENCRYPT(#{holderNm}),
+            COALESCE(#{singleYn}, 'N'),
+            COALESCE(#{basicYn}, 'N'),
+            COALESCE(#{poorYn}, 'N'),
+            COALESCE(#{certYn}, 'N'),
+            #{certDate},
+            <choose><when test="crtfcDnValue != null and crtfcDnValue != ''">#{crtfcDnValue}</when><otherwise>NULL</otherwise></choose>,
+            #{profile},
+            #{profileGb},
+            COALESCE(#{testYn}, 'N'),
+            #{sessionKey},
+            #{sessionLimit},
+            #{approveDe},
+            #{userPic},
+            COALESCE(#{citizenYn}, 'N'),
+            COALESCE(#{minorYn}, 'N'),
+            COALESCE(#{farmYn}, 'N'),
+            #{attaFile},
+            #{subjectDesc},
+            #{profileDesc},
+            #{biznoFile},
+            COALESCE(#{relationGb}, 'M'),
+            #{farmDesc},
+            COALESCE(#{terms1Yn}, 'N'),
+            COALESCE(#{terms2Yn}, 'N'),
+            COALESCE(#{terms3Yn}, 'N'),
+            COALESCE(#{terms4Yn}, 'N'),
+            COALESCE(#{noticeYn}, 'N'),
+            COALESCE(#{eventNotiYn}, 'N'),
+            COALESCE(#{mailNotiYn}, 'N'),
+            COALESCE(#{smsNotiYn}, 'N'),
+            #{oauthGb},
+            #{naverAuthId},
+            #{kakaoAuthId}
+        )
+    </insert>
+
+    <!-- ARMUSER 수정 -->
+    <update id="updateArmuser" parameterType="ArmuserUpdateRequest">
+        UPDATE ARMUSER
+           SET USER_SE = #{userSe},
+               USER_ID = #{userId},
+               <if test="password != null and password != ''">PASSWORD = #{password},</if>
+               <if test="password != null and password != ''">CHG_PWD_LAST_PNTTM = NOW(),</if>
+               PASSWORD_HINT = #{passwordHint},
+               PASSWORD_CNSR = #{passwordCnsr},
+               USER_NM = ENCRYPT(#{userNm}),
+               IHIDNUM = ENCRYPT(#{ihidnum}),
+               USR_TELNO = ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+               OFFM_TELNO = ENCRYPT(REPLACE(#{offmTelno}, '-', '')),
+               FXNUM = ENCRYPT(#{fxnum}),
+               MBTLNUM = ENCRYPT(REPLACE(#{mbtlnum}, '-', '')),
+               EMAIL_ADRES = ENCRYPT(#{emailAdres}),
+               ZIP = ENCRYPT(#{zip}),
+               ADRES_LOT = ENCRYPT(#{adresLot}),
+               ADRES = ENCRYPT(#{adres}),
+               DETAIL_ADRES = ENCRYPT(#{detailAdres}),
+               BRTHDY = REPLACE(REPLACE(REPLACE(#{brthdy}, '-', ''), ' ', ''), '.', ''),
+               SEXDSTN_CODE = #{sexdstnCode},
+               <if test="mberSttus != null and mberSttus != ''">MBER_STTUS = #{mberSttus},</if>
+               <if test="sbscrbDe != null and sbscrbDe != ''">SBSCRB_DE = #{sbscrbDe},</if>
+               <if test="secsnDe != null and secsnDe != ''">SECSN_DE = #{secsnDe},</if>
+               <if test="lockAt == 'Y'">LOCK_AT = 'Y',</if>
+               <if test="lockAt == 'Y'">LOCK_CNT = 5,</if>
+               <if test="lockAt == 'Y'">LOCK_LAST_PNTTM = NOW(),</if>
+               <if test="lockAt != 'Y'">LOCK_AT = NULL,</if>
+               <if test="lockAt != 'Y'">LOCK_CNT = NULL,</if>
+               <if test="lockAt != 'Y'">LOCK_LAST_PNTTM = NULL,</if>
+               <if test="groupId != null and groupId != ''">GROUP_ID = #{groupId},</if>
+               ORGNZT_ID = #{orgnztId},
+               INDUTY_CODE = #{indutyCode},
+               BIZRNO = #{bizrno},
+               ENTRPRS_SE_CODE = #{entrpsSeCode},
+               CXFC = #{cxfc},
+               PSTINST_CODE = #{pstinstCode},
+               OFCPS_NM = #{ofcpsNm},
+               EMPL_NO = #{emplNo},
+               APPLCNT_NM = #{applcntNm},
+               SCHOOL_ID = #{schoolId},
+               SCHOOL_GB = #{schoolGb},
+               SCHOOL_NM = #{schoolNm},
+               SCHOOL_LVL = #{schoolLvl},
+               SCHOOL_NO = #{schoolNo},
+               PAY_BANK_CODE = #{payBankCode},
+               PAY_BANK = ENCRYPT(#{payBank}),
+               HOLDER_NM = ENCRYPT(#{holderNm}),
+               SINGLE_YN = COALESCE(#{singleYn}, 'N'),
+               BASIC_YN = COALESCE(#{basicYn}, 'N'),
+               POOR_YN = COALESCE(#{poorYn}, 'N'),
+               CERT_YN = COALESCE(#{certYn}, 'N'),
+               <if test="crtfcDnValue != null and crtfcDnValue != ''">CRTFC_DN_VALUE = #{crtfcDnValue},</if>
+               CERT_DATE = #{certDate},
+               PROFILE = #{profile},
+               PROFILE_GB = #{profileGb},
+               TEST_YN = COALESCE(#{testYn}, 'N'),
+               SESSION_KEY = #{sessionKey},
+               SESSION_LIMIT = #{sessionLimit},
+               APPROVE_DE = #{approveDe},
+               USER_PIC = #{userPic},
+               CITIZEN_YN = COALESCE(#{citizenYn}, 'N'),
+               MINOR_YN = COALESCE(#{minorYn}, 'N'),
+               FARM_YN = COALESCE(#{farmYn}, 'N'),
+               ATTA_FILE = #{attaFile},
+               SUBJECT_DESC = #{subjectDesc},
+               PROFILE_DESC = #{profileDesc},
+               BIZNO_FILE = #{biznoFile},
+               RELATION_GB = COALESCE(#{relationGb}, 'M'),
+               FARM_DESC = #{farmDesc},
+               TERMS1_YN = COALESCE(#{terms1Yn}, 'N'),
+               TERMS2_YN = COALESCE(#{terms2Yn}, 'N'),
+               TERMS3_YN = COALESCE(#{terms3Yn}, 'N'),
+               TERMS4_YN = COALESCE(#{terms4Yn}, 'N'),
+               NOTICE_YN = COALESCE(#{noticeYn}, 'N'),
+               EVENT_NOTI_YN = COALESCE(#{eventNotiYn}, 'N'),
+               MAIL_NOTI_YN = COALESCE(#{mailNotiYn}, 'N'),
+               SMS_NOTI_YN = COALESCE(#{smsNotiYn}, 'N'),
+               CHG_LAST_DT = NOW()
+         WHERE ESNTL_ID = #{esntlId}
+    </update>
+
+	<!-- 회원 탈퇴(삭제) - MBER_STTUS='D', SECSN_DE 설정 -->
+	<update id="deleteArmuser" parameterType="ArmuserDeleteRequest">
+		UPDATE ARMUSER
+		   SET MBER_STTUS = 'D'
+		     , SECSN_DE    = NOW()
+		     , CHG_LAST_DT = NOW()
+		 WHERE ESNTL_ID   = #{esntlId}
+	</update>
+
+	<!-- USER_PIC(프로필 사진) 비움 - fileId 그룹 삭제 후 회원의 USER_PIC 컬럼 초기화 -->
+	<update id="clearUserPic" parameterType="string">
+		UPDATE ARMUSER
+		   SET USER_PIC = ''
+		 WHERE ESNTL_ID = #{_parameter}
+	</update>
+
+	<!-- ATTA_FILE(첨부파일) 비움 - fileId 그룹 삭제 후 회원의 ATTA_FILE 컬럼 초기화 -->
+	<update id="clearAttaFile" parameterType="string">
+		UPDATE ARMUSER
+		   SET ATTA_FILE = ''
+		 WHERE ESNTL_ID = #{_parameter}
+	</update>
+
+	<!-- BIZNO_FILE(사업자등록증) 비움 - 파일 삭제 후 회원의 BIZNO_FILE 컬럼 초기화 -->
+	<update id="clearBiznoFile" parameterType="string">
+		UPDATE ARMUSER
+		   SET BIZNO_FILE = ''
+		 WHERE ESNTL_ID = #{_parameter}
+	</update>
+
+</mapper>

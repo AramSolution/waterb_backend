@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ProgramManageDAO">
+
+	<!-- 프로그램 목록 조회 -->
+	<select id="selectProgramList" parameterType="egovMap" resultType="egovMap">
+		SELECT ROW_NUMBER() OVER (ORDER BY A1.PROGRM_KOREAN_NM ) AS RNUM
+		     , A1.*
+		  FROM ( SELECT COALESCE( PROGRM_FILE_NM   , '' ) AS PROGRM_FILE_NM
+		              , COALESCE( PROGRM_STRE_PATH , '' ) AS PROGRM_STRE_PATH
+		              , COALESCE( PROGRM_KOREAN_NM , '' ) AS PROGRM_KOREAN_NM
+		              , COALESCE( PROGRM_DC        , '' ) AS PROGRM_DC
+		              , COALESCE( URL              , '' ) AS URL
+		           FROM LETTNPROGRMLIST
+		          WHERE 1=1
+		         <if test='searchCondition == "1"'>
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "4"'>
+		           AND PROGRM_DC LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "5"'>
+		           AND URL LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterProgrmFileNm != null and filterProgrmFileNm != ''">
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{filterProgrmFileNm}, '%')
+		         </if>
+		         <if test="filterProgrmStrePath != null and filterProgrmStrePath != ''">
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{filterProgrmStrePath}, '%')
+		         </if>
+		         <if test="filterProgrmKoreanNm != null and filterProgrmKoreanNm != ''">
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{filterProgrmKoreanNm}, '%')
+		         </if>
+		         <if test="filterUrl != null and filterUrl != ''">
+		           AND URL LIKE CONCAT('%', #{filterUrl}, '%')
+		         </if>
+		       ) A1
+        LIMIT #{lengthPage} OFFSET #{startIndex}
+	</select>
+
+	<select id="selectProgramCount" parameterType="egovMap" resultType="int">
+		SELECT COUNT(1) AS LIST_CNT
+		  FROM ( SELECT PROGRM_FILE_NM
+		           FROM LETTNPROGRMLIST
+		          WHERE 1=1
+		         <if test='searchCondition == "1"'>
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "4"'>
+		           AND PROGRM_DC LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "5"'>
+		           AND URL LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterProgrmFileNm != null and filterProgrmFileNm != ''">
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{filterProgrmFileNm}, '%')
+		         </if>
+		         <if test="filterProgrmStrePath != null and filterProgrmStrePath != ''">
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{filterProgrmStrePath}, '%')
+		         </if>
+		         <if test="filterProgrmKoreanNm != null and filterProgrmKoreanNm != ''">
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{filterProgrmKoreanNm}, '%')
+		         </if>
+		         <if test="filterUrl != null and filterUrl != ''">
+		           AND URL LIKE CONCAT('%', #{filterUrl}, '%')
+		         </if>
+		       ) A1
+	</select>
+
+	<!-- 프로그램 목록 조회 -->
+	<select id="selectProgramExcelList" parameterType="egovMap" resultType="egovMap">
+		SELECT ROW_NUMBER() OVER (ORDER BY A1.PROGRM_KOREAN_NM ) AS RNUM
+		     , A1.*
+		  FROM ( SELECT COALESCE( PROGRM_FILE_NM   , '' ) AS PROGRM_FILE_NM
+		              , COALESCE( PROGRM_STRE_PATH , '' ) AS PROGRM_STRE_PATH
+		              , COALESCE( PROGRM_KOREAN_NM , '' ) AS PROGRM_KOREAN_NM
+		              , COALESCE( PROGRM_DC        , '' ) AS PROGRM_DC
+		              , COALESCE( URL              , '' ) AS URL
+		           FROM LETTNPROGRMLIST
+		          WHERE 1=1
+		         <if test='searchCondition == "1"'>
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "2"'>
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "3"'>
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "4"'>
+		           AND PROGRM_DC LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <if test='searchCondition == "5"'>
+		           AND URL LIKE CONCAT('%', #{searchKeyword}, '%')
+		         </if>
+		         <!-- 테이블 필터 조건 추가 -->
+		         <if test="filterProgrmFileNm != null and filterProgrmFileNm != ''">
+		           AND PROGRM_FILE_NM LIKE CONCAT('%', #{filterProgrmFileNm}, '%')
+		         </if>
+		         <if test="filterProgrmStrePath != null and filterProgrmStrePath != ''">
+		           AND PROGRM_STRE_PATH LIKE CONCAT('%', #{filterProgrmStrePath}, '%')
+		         </if>
+		         <if test="filterProgrmKoreanNm != null and filterProgrmKoreanNm != ''">
+		           AND PROGRM_KOREAN_NM LIKE CONCAT('%', #{filterProgrmKoreanNm}, '%')
+		         </if>
+		         <if test="filterUrl != null and filterUrl != ''">
+		           AND URL LIKE CONCAT('%', #{filterUrl}, '%')
+		         </if>
+		       ) A1
+	</select>
+
+	<!-- 프로그램 상세 조회 -->
+	<select id="selectProgramDetail" parameterType="egovMap" resultType="egovMap">
+		 SELECT COALESCE( PROGRM_FILE_NM   , '' ) AS PROGRM_FILE_NM
+		      , COALESCE( PROGRM_STRE_PATH , '' ) AS PROGRM_STRE_PATH
+		      , COALESCE( PROGRM_KOREAN_NM , '' ) AS PROGRM_KOREAN_NM
+		      , COALESCE( PROGRM_DC        , '' ) AS PROGRM_DC
+		      , COALESCE( URL              , '' ) AS URL
+		  FROM LETTNPROGRMLIST
+		 WHERE PROGRM_FILE_NM = #{progrmFileNm}
+	</select>
+
+	<!-- 프로그램 등록 가능 여부 : Y: 가능, N: 불가 -->
+	<select id="checkProgramIdAjax" parameterType="egovMap" resultType="String">
+		SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+		  FROM LETTNPROGRMLIST
+		 WHERE PROGRM_FILE_NM = #{progrmFileNm}
+	</select>
+
+	<!-- 프로그램 등록 -->
+	<insert id="insertProgramAjax" parameterType="egovMap">
+		INSERT INTO LETTNPROGRMLIST ( PROGRM_FILE_NM
+		                            , PROGRM_STRE_PATH
+		                            , PROGRM_KOREAN_NM
+		                            , PROGRM_DC
+		                            , URL
+		                   ) VALUES ( #{progrmFileNm}
+		                            , #{progrmStrePath}
+		                            , #{progrmKoreanNm}
+		                            , #{progrmDc}
+		                            , #{url}
+		                            );
+	</insert>
+
+	<!-- 프로그램 수정 -->
+	<update id="updateProgramAjax" parameterType="egovMap">
+		 UPDATE LETTNPROGRMLIST
+		    SET PROGRM_FILE_NM    = #{progrmFileNm}
+		      , PROGRM_STRE_PATH  = #{progrmStrePath}
+		      , PROGRM_KOREAN_NM  = #{progrmKoreanNm}
+		      , PROGRM_DC         = #{progrmDc}
+		      , URL               = #{url}
+		  WHERE PROGRM_FILE_NM = #{progrmFileNm}
+	</update>
+
+	<!-- 프로그램 삭제 -->
+	<delete id="deleteProgramAjax" parameterType="egovMap">
+		DELETE
+		  FROM LETTNPROGRMLIST
+		 WHERE PROGRM_FILE_NM = #{progrmFileNm}
+	</delete>
+</mapper>

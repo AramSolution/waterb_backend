@@ -1,0 +1,31 @@
+services:
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: waterb_backend
+    restart: unless-stopped
+    # GPKI 라이선스 IP 인증을 위해 호스트 네트워크 사용 (컨테이너 IP = 호스트 IP)
+    network_mode: host
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC"
+    volumes:
+      - app_files:/home/aram
+      - /home/aram/vol/ssl:/app/ssl
+      - /home/aram/vol/gpki:/home/aram/vol/gpki
+      - /home/aram/vol/gpki/jar/lib/gpkiapi_jni.jar:/home/aram/vol/gpki/jar/lib/gpkiapi_jni.jar
+      - /home/aram/vol/gpki/lib64/:/home/aram/vol/gpki/lib64/
+      - /home/aram/vol/files:/home/aram/test
+    #      - D:\배포파일\SSL\2026\Wildcard.uaram.co.kr\Wildcard.uaram.co.kr_jks:/app/ssl:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://test3.uaram.co.kr:8443/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  app_files:
+    driver: local

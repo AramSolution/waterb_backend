@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="artadviManageDAO">
+
+    <!-- 상담관리 목록 (REQ_ID 기준, PK 단일) -->
+    <select id="selectArtadviList" parameterType="ArtadviListRequest" resultType="ArtadviDTO">
+        SELECT
+            A.PRO_ID,
+            A.PRO_SEQ,
+            COALESCE(A.REQ_ID, '') AS REQ_ID,
+            A.REQ_ESNTL_ID,
+            A.ADV_ESNTL_ID,
+            COALESCE(DECRYPT(U.USER_NM), '') AS ADV_ESNTL_NM,
+            COALESCE(FN_MASK_PHONE(DECRYPT(U.MBTLNUM), 'N'), '') AS MBTLNUM,
+            COALESCE(U.PROFILE_DESC, '') AS PROFILE_DESC,
+            DATE_FORMAT(A.ADV_DT, '%Y-%m-%d') AS ADV_DT,
+            A.ADV_FROM,
+            A.ADV_TO,
+            COALESCE(A.ADV_SPACE, '') AS ADV_SPACE,
+            COALESCE(A.ADV_DESC, '') AS ADV_DESC,
+            COALESCE(A.FILE_ID, '') AS FILE_ID,
+            COALESCE(A.CHG_USER_ID, '') AS CHG_USER_ID,
+            A.CRT_DATE,
+            A.CHG_DATE
+        FROM ARTADVI A
+        LEFT JOIN ARMUSER U ON U.ESNTL_ID = A.ADV_ESNTL_ID
+        WHERE A.REQ_ID = #{reqId}
+        ORDER BY A.ADV_DT, A.ADV_FROM
+    </select>
+
+    <!-- 상담관리 등록 (PK: REQ_ID). ADV_FROM/ADV_TO/ADV_SPACE는 다른 화면에서 입력 -->
+    <insert id="insertArtadvi" parameterType="ArtadviSaveRequest">
+        INSERT INTO ARTADVI (
+            REQ_ID, PRO_ID, PRO_SEQ, REQ_ESNTL_ID, ADV_ESNTL_ID, STTUS_CODE,
+            CHG_USER_ID, CRT_DATE, CHG_DATE
+        ) VALUES (
+            #{reqId}, #{proId}, #{proSeq}, #{reqEsntlId}, #{advEsntlId}, '',
+            #{chgUserId}, NOW(), NOW()
+        )
+    </insert>
+
+    <!-- 상담관리 수정 (PK: REQ_ID). ADV_FROM/ADV_TO/ADV_SPACE는 다른 화면에서 입력하므로 이 화면에서는 변경하지 않음 -->
+    <update id="updateArtadvi" parameterType="ArtadviSaveRequest">
+        UPDATE ARTADVI SET
+            ADV_ESNTL_ID = #{advEsntlId},
+            ADV_DT = #{advDt},
+            ADV_FROM = #{advFrom},
+            ADV_TO = #{advTo},
+            ADV_SPACE = #{advSpace},
+            ADV_DESC = #{advDesc},
+            FILE_ID = #{fileId},
+            CHG_USER_ID = #{chgUserId},
+            CHG_DATE = NOW()
+        WHERE REQ_ID = #{reqId}
+    </update>
+</mapper>

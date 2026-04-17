@@ -1,0 +1,506 @@
+---
+alwaysApply: false
+---
+
+# waterb_backend – Spring Boot Backend Conventions
+
+**When you add or modify REST APIs in this project, follow this rule.** Legacy eGov-style code may remain; do not copy its patterns into new code. One consistent structure for every new API.
+
+---
+
+## 1. Your Role and Constraints
+
+- **New APIs**: Use standard Spring Boot REST style only (no `.do`, no `.Ajax`, no `HttpServletRequest`/`Model` in new endpoints).
+- **Existing eGov controllers**: Leave them as-is; do not refactor them to match this rule unless explicitly asked.
+- **Consistency**: If one new API uses `ResponseEntity<T>`, DTOs, and Service-only logic, all new APIs must follow the same pattern.
+
+---
+
+## 2. Layer Responsibilities (MUST Follow)
+
+| Layer                   | Responsibility                                                                   | Must NOT                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Controller**          | Receive request → validate (via DTO) → call Service → return `ResponseEntity<T>` | No `HttpServletRequest`, `Model`, `ModelMap`; no parameter massaging; no DB or business decisions |
+| **Service**             | All business logic, orchestration, transaction boundaries                        | —                                                                                                 |
+| **Repository / Mapper** | DB access only (CRUD, queries)                                                   | No business rules or branching on business state                                                  |
+
+**Rule of thumb:** If it’s a “should we do X?” or “in which case do Y?” decision, it belongs in **Service**, not in Controller or Mapper.
+
+---
+
+## 3. Controller Rules (New REST APIs Only)
+
+### 3.1 Base Shape
+
+- Use `@RestController` and `@RequestMapping("/api/...")` with **nouns** in the path. Use HTTP method for the action (GET/POST/PUT/DELETE).
+- Return type: **`ResponseEntity<T>`** (e.g. `ResponseEntity.ok(...)`, `ResponseEntity.noContent().build()`).
+- Prefer `@RequiredArgsConstructor` and `private final` for dependencies (or keep existing `@Resource` if already used in the file).
+
+```java
+// ✅ GOOD – new REST endpoint
+@RestController
+@RequestMapping("/api/admin/artprom")
+@RequiredArgsConstructor
+public class ArtpromController {
+
+    private final ArtpromManageService artpromManageService;
+
+    @GetMapping("/{proId}")
+    public ResponseEntity<ArtpromDetailResponse> get(@PathVariable String proId) {
+        return ResponseEntity.ok(artpromManageService.getDetail(proId));
+    }
+
+    @DeleteMapping("/{proId}/files/{fileId}/{seq}")
+    public ResponseEntity<Void> deleteFile(
+            @PathVariable String proId,
+            @PathVariable Long fileId,
+            @PathVariable Integer seq) {
+        artpromManageService.deleteFile(new ArtpromFileDeleteRequest(proId, fileId, seq));
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+### 3.2 File Upload (Standard Pattern)
+
+For endpoints that accept **JSON + files**, use **multipart/form-data** with a **named JSON part** and optional file parts. Do not put complex JSON in request params or mix with legacy multipart parsing.
+
+- **Backend**: `consumes = MediaType.MULTIPART_FORM_DATA_VALUE`, `@RequestPart("data")` for the JSON DTO, `@RequestPart(value = "proFile", required = false)` (or similar) for files.
+- **Frontend**: Build `FormData`, append one part as `application/json` (e.g. key `"data"`) and file(s) with their own keys.
+
+```java
+// ✅ GOOD – JSON + optional files
+@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<ArtpromResultResponse> create(
+        @RequestPart("data") @Valid ArtpromInsertRequest request,
+        @RequestPart(value = "proFile", required = false) MultipartFile proFile,
+        @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+    return ResponseEntity.ok(artpromManageService.create(request, proFile, files));
+}
+```
+
+### 3.2.1 Attachment file group on update (MUST)
+
+**When an entity has a single file-id column (e.g. ATTA*FILE) pointing to a \_group* of files (same FILE_ID, multiple SEQ in ARTFILE), and the API allows adding new files on update, you MUST append to the existing group instead of creating a new file id and replacing the reference.**
+
+- **Why**: If you always create a new file id and set the entity column to it (e.g. `request.setAttaFile(newFileId)`), the previous file id is no longer referenced. Existing files remain in ARTFILE but disappear from the user’s view because the entity now points only at the new group. This looks like “existing files were deleted and only the new file exists.”
+- **Correct behavior**: On update, when new attachment file(s) are present:
+  - **If** the entity already has a non-empty file-id (e.g. `current.getAttaFile()`): keep that file id, compute `nextSeq = selectFileMaxSeq(existingFileId) + 1`, and call `parseFileInf(..., existingFileIdStr, "FILE_", nextSeq, ...)` so new rows are inserted with the **same** FILE_ID and new SEQ. Then set the request DTO to the **same** file id (e.g. `request.setAttaFile(attaFileIdStr)`).
+  - **If** the entity has no file id (null or blank): create a new file id with `parseFileInf(..., null, "FILE_", 0, ...)` and set the entity column to the new file id.
+- **Reference**: Same pattern as “기존 fileId에 추가 또는 신규 fileId 생성” used in admin support application (Artappm) and user-web armuser update.
+
+**MUST:**
+
+- On update with new attachment files, **append to the existing file group** when the entity already has a valid file id (same FILE_ID, new SEQ via `selectFileMaxSeq` + 1).
+- Only **create a new file id** when the entity has no file id yet.
+
+**MUST NOT:**
+
+- **Never** replace the entity’s file-id reference with a newly created file id when the entity already had a file id and you are only _adding_ files. That drops the reference to the previous group and makes existing files disappear from the UI.
+
+```java
+// ✅ GOOD – append to existing file id when present
+String attaFileIdStr = current != null && current.getAttaFile() != null && !current.getAttaFile().trim().isEmpty()
+        ? current.getAttaFile().trim() : "";
+if (!attaFileIdStr.isEmpty()) {
+    int nextSeq = fileManageService.selectFileMaxSeq(Long.parseLong(attaFileIdStr)) + 1;
+    fileList = fileUtil.parseFileInf(attachMap, fileDTO, attaFileIdStr, "FILE_", nextSeq, "armuser", null);
+    // ... insertFileInfo for each ...
+    request.setAttaFile(attaFileIdStr);  // same id
+} else {
+    fileList = fileUtil.parseFileInf(attachMap, fileDTO, null, "FILE_", 0, "armuser", null);
+    // ... insertFileInfo ...
+    request.setAttaFile(String.valueOf(fileList.get(0).getFileId()));  // new id
+}
+```
+
+```java
+// ❌ BAD – always new file id on update; existing files appear deleted
+fileList = fileUtil.parseFileInf(attachMap, fileDTO, null, "FILE_", 0, "armuser", null);
+request.setAttaFile(String.valueOf(fileList.get(0).getFileId()));  // replaces reference; old group orphaned
+```
+
+**Checklist when implementing or changing update logic for attachment file groups:**  
+Does the entity have one file-id column for a multi-file group? On update with new files, do you append to the existing file id (using `selectFileMaxSeq` + nextSeq) when that id exists, and only create a new file id when it does not? If not, change the logic accordingly.
+
+### 3.2.2 Admin article — Archive gallery images (`BBST03`, `ArticleManageController`)
+
+**Context:** Admin posts for **archive** boards upload **multiple images** into one **NTT_IMG** file group (`nttImgFileId`). Legacy endpoints: **`insertArticle.Ajax`**, **`updateArticle.ajax`** (`MultipartHttpServletRequest`). Implementation lives in `arami.common.adminWeb.article.web.ArticleManageController`: **`saveArchiveImageUploads`**, **`applyArchiveImageOrder`**.
+
+**Prompt spec — MUST understand before changing this flow**
+
+1. **Multipart part names**  
+   - **Multi-file:** repeated parts named **`archiveImageFiles`** (Spring `request.getFiles("archiveImageFiles")`).  
+   - **Optional single-file fallback:** **`archiveImageFile`** (one part).  
+   - **JSON strings (form fields):**  
+     - **`archiveImageFileSeqs`** — JSON array of integers (slot indices from client; used mainly on **new** group / registration).  
+     - **`archiveImageFileReplaceSeqs`** — JSON array parallel to **`archiveImageFiles`**: **`-1`** = append new row; **`>= 0`** = **replace** existing `SEQ` in the current `nttImgFileId` group via **`fileManageService.updateFile`**.  
+     - **`archiveImageOrder`** — JSON array of `{ "type": "existing", "seq": N }` | `{ "type": "new", "index": N }`.  
+       - **`existing`:** keep DB row `seq`.  
+       - **`new`:** `index` indexes into **`insertedSeqs`** returned from **`saveArchiveImageUploads`** (only **new INSERT**s, not in-place updates).  
+       - **Empty array `[]`:** **delete entire** NTT image file group and clear **`nttImgFileId`**.
+
+2. **Order of operations (both insert and update)**  
+   - Call **`saveArchiveImageUploads`** first → returns **`newArchiveSeqs`** (seq values of newly inserted files).  
+   - Then **`applyArchiveImageOrder(request, model, newArchiveSeqs)`** — reorders, prunes deleted seqs, or wipes group if order is empty.
+
+3. **Append vs new group**  
+   - If **`nttImgFileId`** is already set (from form / model), **`saveArchiveImageUploads`** appends with **`selectFileMaxSeq + 1`** unless **`archiveImageFileReplaceSeqs`** triggers **`updateFile`** for specific seqs.  
+   - If no valid existing id, create a **new** file group and set **`model.put("nttImgFileId", …)`** from inserted rows.
+
+4. **Uniq id for file rows**  
+   - Pass frontend/session **`uniqId`** into file DTOs (`setUNIQ_ID`) the same way as **`articleFiles`**.
+
+**MUST NOT**
+
+- ❌ Change **`archiveImageOrder`** semantics without updating **`ArticleService`** / **`buildArchiveImageSubmitParts`** on the frontend — both sides must agree on **`new` index** vs **`existing` seq**.  
+- ❌ Apply order **before** uploads — **`applyArchiveImageOrder`** depends on **`newArchiveSeqs`** from **`saveArchiveImageUploads`**.  
+- ❌ Treat **`archiveImageFileReplaceSeqs`** as optional when the client sends **replace** uploads — length should match **`archiveImageFiles`** when replace mode is used.
+
+**Reference:** `ArticleManageController.java` — private methods **`parseArchiveImageReplaceSeqs`**, **`applyArchiveImageOrder`**, **`saveArchiveImageUploads`**; invoked from **`insertArticleAjax`** and **`updateArticleAjax`** after general **`articleFiles`** handling.
+
+### 3.3 Controller Forbidden in New Code
+
+- Do **not** use `HttpServletRequest`, `HttpSession`, `Model`, or `ModelMap` in new REST endpoints.
+- Do **not** add parameter parsing, default paging, or “if (db says X) then return Y” logic in the controller; delegate to Service.
+- Do **not** introduce new endpoints with `.do` or `.Ajax` in the path; use plain resource paths and HTTP methods.
+
+---
+
+## 4. DTO Rules
+
+- **Request DTO**: Input only; use for validation (`@Valid`), and use `@NotNull`, `@NotBlank`, etc. Do not expose entity or DB column layout.
+- **Response DTO**: Output only; do not leak entity/table structure. Use clear, stable field names.
+- **Dates**: Prefer `LocalDate` / `LocalDateTime`; avoid raw `String` or `Date` for API contracts when possible.
+- **Codes / status**: Prefer enums over magic strings or integers in the API.
+
+```java
+// ✅ GOOD – request DTO with validation
+@Getter
+@Setter
+public class ArtpromFileDeleteRequest {
+    @NotBlank
+    private String proId;
+    @NotNull
+    private Long fileId;
+    @NotNull
+    private Integer seq;
+}
+```
+
+### 4.1 Jackson + Lombok: pXxx / cXxx field names (MUST)
+
+**When you add or change a DTO that is (de)serialized by Jackson (e.g. `@RequestBody`, response body), you MUST handle the pXxx/cXxx naming exception.**
+
+- **Why**: With Lombok `@Data`, a field like `pUserNm` gets getter `getPUserNm()` (capital P). Jackson infers the JSON property from the getter and can produce `"PUserNm"` instead of `"pUserNm"`, so request/response keys do not match and the value is null or missing.
+- **Pattern to fix**: Any field whose name is **one lowercase letter followed by an uppercase letter** (e.g. `pUserNm`, `pEsntlId`, `pMbtlnum`, `pIhidnum`, `cIhidnum`). Normal names like `proId`, `userNm`, `reqEsntlId` are fine (multiple leading lowercase letters).
+- **Action**: Add `@JsonProperty("&lt;exactFieldName&gt;")` on **every** such field in **both** request and response DTOs (so serialization and deserialization use the same key). Use the exact Java field name as the string (e.g. `@JsonProperty("pUserNm")`).
+
+```java
+// ✅ GOOD – explicit JSON key for pXxx/cXxx fields
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@Data
+public class ArtappmDTO {
+    @JsonProperty("pEsntlId")
+    private String pEsntlId;
+    @JsonProperty("pUserNm")
+    private String pUserNm;
+    @JsonProperty("pMbtlnum")
+    private String pMbtlnum;
+    @JsonProperty("pIhidnum")
+    private String pIhidnum;
+    @JsonProperty("cIhidnum")
+    private String cIhidnum;
+}
+```
+
+```java
+// ❌ BAD – no @JsonProperty; pUserNm may serialize as "PUserNm" or deserialize as null
+@Data
+public class SomeRequest {
+    private String pUserNm;  // frontend sends "pUserNm" but backend can miss it
+}
+```
+
+**Checklist when creating or editing a DTO used in REST (request or response):**  
+Does it have any field named like `pXxx`, `cXxx` (single leading lowercase letter + uppercase)? → If yes, add `@JsonProperty("fieldName")` for each.
+
+---
+
+## 5. Service Rules
+
+- **All business flow and decisions** happen in the Service layer (e.g. “delete file then clear parent’s file id if no files left”).
+- **Transactions**: Use `@Transactional` at Service method level for operations that must be atomic.
+- Controller only calls a single Service method (or a small, obvious set); it does not orchestrate multiple services or branches.
+
+```java
+// ✅ GOOD – business logic and transaction in Service
+@Transactional
+public void deleteFile(ArtpromFileDeleteRequest request) {
+    fileManageService.delete(request.getFileId(), request.getSeq());
+    if (fileManageService.isFileGroupEmpty(request.getFileId())) {
+        artpromManageDAO.clearFileId(new ClearFileIdParam(request.getProId()));
+    }
+}
+```
+
+---
+
+## 6. Repository / MyBatis Mapper Rules
+
+- **Parameters**: Prefer a **single DTO or parameter object** per operation. Avoid `#{_parameter}` or unnamed primitives when a named DTO is clearer.
+- **Updates**: Use explicit `SET col = NULL` (or appropriate value) rather than omitting columns; keep SQL readable and predictable.
+
+### 6.1 Use DTO for parameterType and resultType (new mappers)
+
+- **MUST**: For new mapper queries that feed REST APIs, use **DTO** for both `parameterType` and `resultType`. Do **not** use `egovMap` (or `resultType="egovMap"`) and then map rows to DTO in the Service layer.
+- **Rationale**: MyBatis can map result set → DTO directly. Mapping in Service duplicates logic, hardcodes column names in Java, and mixes persistence mapping with business logic.
+- **DAO**: Method should accept a request DTO and return `List<ResponseDto>` (or single `ResponseDto`). Service then validates, calls DAO, and returns; no row-by-row conversion.
+
+```xml
+<!-- ✅ GOOD – DTO in, DTO out; result columns in UPPER_SNAKE_CASE (see §6.3) -->
+<select id="selectDetailList" parameterType="DetailCodeListRequest" resultType="DetailCodeResponse">
+    SELECT CODE_ID, CODE, CODE_NM, CODE_DC
+    FROM LETTCCMMNDETAILCODE
+    WHERE USE_AT = 'Y' AND CODE_ID = #{codeId}
+    ORDER BY ORDER_BY
+</select>
+```
+
+```xml
+<!-- ❌ BAD – egovMap result forces Service to do manual EgovMap → DTO mapping -->
+<select id="selectDetailList" parameterType="egovMap" resultType="egovMap">
+    SELECT CODE_ID, CODE, CODE_NM, CODE_DC FROM ...
+</select>
+```
+
+### 6.2 Type aliases (keep XML short and consistent)
+
+- **MUST**: Register DTO packages (or classes) in **mapper-config.xml** under `<typeAliases>` (e.g. `<package name="arami.common.adminWeb.code.service.dto.request"/>`). In mapper XML use the **short alias** (class simple name), not the full qualified class name.
+- **Rationale**: Keeps XML readable; aligns with existing Artprom/Artappm conventions; one place to update if package moves.
+
+```xml
+<!-- ✅ GOOD – alias from mapper-config.xml -->
+<select id="selectDetailList" parameterType="DetailCodeListRequest" resultType="DetailCodeResponse">
+```
+
+```xml
+<!-- ❌ BAD – full path in XML; use alias instead -->
+<select id="selectDetailList" parameterType="arami.common.adminWeb.code.service.dto.request.DetailCodeListRequest"
+        resultType="arami.common.adminWeb.code.service.dto.response.DetailCodeResponse">
+```
+
+### 6.3 Result column naming: UPPER_SNAKE_CASE in SQL (MUST)
+
+**When you write or change MyBatis `<select>` result columns (including aliases), use the database naming convention: UPPER_SNAKE_CASE.**
+
+- **MUST**: Use **UPPER_SNAKE_CASE** for every result column/alias in mapper SQL (e.g. `USER_NM`, `ESNTL_ID`, `SCHOOL_NM`, `OFFM_TELNO`, `PROFILE_DESC`). Match the physical column name or a clear derivative (e.g. `SUB_NM_LIST` for a concatenated list).
+- **Rationale**: This project has MyBatis `mapUnderscoreToCamelCase=true`. Result set names like `USER_NM` are automatically mapped to DTO properties like `userNm`. SQL stays aligned with the database; DTOs stay in Java camelCase; no duplicate naming in XML.
+- **MUST NOT**: Do **not** use camelCase (or other non–database-style) aliases in SQL (e.g. `AS userNm`, `AS esntlId`). That breaks the single convention “SQL = DB style, DTO = Java style” and causes inconsistency and mistakes when copying from DB metadata or other queries.
+
+**Prompt-style reminder for AI/developers:**  
+“In waterb_backend MyBatis mappers, SELECT result columns and aliases MUST be UPPER_SNAKE_CASE (e.g. USER_NM, ESNTL_ID). Do not alias to camelCase in SQL. DTOs remain camelCase; mapping is automatic.”
+
+```xml
+<!-- ✅ GOOD – result columns in database convention; mapUnderscoreToCamelCase maps to DTO -->
+<select id="selectAcademyListForUserWeb" resultType="AcademyListForUserItem">
+    SELECT COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
+         , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
+         , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
+         , COALESCE(A2.USER_PIC, '') AS USER_PIC
+         , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
+      FROM ARMUSER A2
+</select>
+```
+
+```xml
+<!-- ❌ BAD – camelCase in SQL; do not do this -->
+<select id="selectAcademyListForUserWeb" resultType="AcademyListForUserItem">
+    SELECT COALESCE(A2.ESNTL_ID, '') AS esntlId
+         , COALESCE(DECRYPT(A2.USER_NM), '') AS userNm
+      FROM ARMUSER A2
+</select>
+```
+
+**Checklist:** When adding or editing a `<select>` that returns a DTO: Are all result column names/aliases in UPPER_SNAKE_CASE? If you wrote `AS userNm` or similar, change to `AS USER_NM`.
+
+### 6.4 Parameter object / update examples (unchanged)
+
+```xml
+<!-- ✅ GOOD – named DTO parameter -->
+<update id="clearFileId" parameterType="ClearFileIdParam">
+    UPDATE ARTPROM
+       SET FILE_ID = NULL
+     WHERE PRO_ID = #{proId}
+</update>
+```
+
+```java
+// ✅ GOOD – parameter object for Mapper
+@Getter
+@AllArgsConstructor
+public class ClearFileIdParam {
+    private String proId;
+}
+```
+
+---
+
+## 7. URL Design (New APIs)
+
+- **Nouns** for resources (e.g. `/api/admin/artprom`, `/api/admin/artprom/{proId}/files`).
+- **Actions** expressed by HTTP method: GET (read), POST (create), PUT/PATCH (update), DELETE (delete).
+- Examples:
+  - `POST   /api/admin/artprom` — create
+  - `GET    /api/admin/artprom/{proId}` — get one
+  - `DELETE /api/admin/artprom/{proId}/files/{fileId}/{seq}` — delete one file
+
+---
+
+## 7.1 Favorite APIs (User-web) — Prompt Pattern (MUST)
+
+**When implementing new favorite/bookmark APIs for logged-in users, follow this exact prompt-style rule:**
+
+“For waterb_backend favorite APIs, never trust `ESNTL_ID` from client input. Resolve the current user from Spring Security (`LoginVO.uniqId`) in the Service layer, then write/delete favorites by `(ESNTL_ID, TARGET_ID)`. Request DTO must contain only business target keys (e.g. `proId`), and server-owned identity fields (`esntlId`) must be set on the server only.”
+
+**MUST:**
+
+- Use authenticated user identity from `SecurityContextHolder` (`LoginVO.getUniqId()`), in Service.
+- Ignore or overwrite any client-provided `esntlId` field (if present for backward compatibility).
+- Keep favorite endpoints resource-style (e.g. `POST /api/user/.../favorite`, `DELETE /api/user/.../favorite/{targetId}`).
+- Use server identity consistently in Mapper parameters (`ESNTL_ID` + target key).
+- Return `401` (or project-standard auth error response) when login identity is missing.
+
+**MUST NOT:**
+
+- Do **not** accept ownership decisions from frontend identity payloads (`esntlId`, `uniqId`).
+- Do **not** put identity resolution or authorization branching in Controller.
+- Do **not** write Mapper SQL that uses only target key without `ESNTL_ID` for user-owned favorites.
+
+```java
+// ✅ GOOD – server resolves ESNTL_ID from authenticated principal
+String esntlId = getCurrentUserUniqId();
+if (esntlId == null || esntlId.isBlank()) {
+    response.setResult("40");
+    response.setMessage("로그인이 필요합니다.");
+    return response;
+}
+FavoriteCommand command = new FavoriteCommand();
+command.setTargetId(request.getTargetId().trim());
+command.setEsntlId(esntlId.trim());
+favoriteDAO.deleteByUserAndTarget(command);
+favoriteDAO.insertByUserAndTarget(command);
+```
+
+```java
+// ❌ BAD – trusting client identity
+FavoriteCommand command = new FavoriteCommand();
+command.setTargetId(request.getTargetId());
+command.setEsntlId(request.getEsntlId()); // client-controlled identity, forbidden
+favoriteDAO.insertByUserAndTarget(command);
+```
+
+```xml
+<!-- ✅ GOOD – user-scoped delete/insert -->
+<delete id="deleteByUserAndTarget" parameterType="FavoriteCommand">
+    DELETE FROM ARTMARK
+     WHERE ESNTL_ID = #{esntlId}
+       AND TARGET_ID = #{targetId}
+</delete>
+```
+
+---
+
+## 7.2 Account recovery & password reset (`/auth/...`) — Prompt Spec (MUST)
+
+**Use this English prompt when implementing, reviewing, or documenting these user-web endpoints.** Implementation lives in `AccountRecoveryAuthController` + `AccountRecoveryService` + `memberLoginDAO` / `MemberLogin_SQL_mysql.xml`. Responses are **JSON maps** with string `resultCode` (`"200"` success, `"300"` business not found / no row updated, `"400"` validation or auth proof failure, `"500"` server-side processing error). HTTP status is **200 OK** for all normal JSON bodies unless the global error handler says otherwise.
+
+### Shared data rules (ARMUSER)
+
+- Match members by **`CRTFC_DN_VALUE`** (Siren DI) and **`USER_SE`** (`SNR`, `PNR`, `ANR`, `MNR`).
+- **Exclude withdrawn members only**: `MBER_STTUS = 'D'` is excluded; **include** pending approval (`A`), active (`P`), and any other non-`D` status (use `IFNULL(MBER_STTUS, '') <> 'D'` in SQL).
+- Password hashing for reset: **`EgovFileScrty.encryptPassword(plainNewPassword, USER_ID)`** (same as login).
+
+### `POST /auth/find-user-id`
+
+**Purpose:** After mobile/Siren certification, resolve the login **`USER_ID`** using **DI + member type**.
+
+**Request (JSON):**
+
+- `userSe` (string, required): `SNR` | `PNR` | `ANR` | `MNR`.
+- `crtfcDnValue` (string, required): certification DI; must match `ARMUSER.CRTFC_DN_VALUE`.
+
+**Success response (`resultCode` `"200"`):** `userId` = full login id; `maskedUserId` may be null.
+
+**Failure:** `"400"` if `userSe` or `crtfcDnValue` missing; `"300"` if no matching non-withdrawn row.
+
+**MUST NOT:** Trust this endpoint alone for password change — it only **reads** id.
+
+---
+
+### `POST /auth/account-recovery/find-user-id`
+
+**Purpose:** Same lookup as above, but the client first obtained a short-lived **`recoveryToken`** (JWT) from the cert callback (`certFlow=accountRecovery`). Use when the client must not send raw DI again.
+
+**Request (JSON):**
+
+- `recoveryToken` (string, required): JWT from `EgovJwtTokenUtil.generateAccountRecoveryToken(di, userSe)` (purpose `accountRecovery`, includes `di` + `userSe`).
+
+**Success (`resultCode` `"200"`):** Return **masked** login id only: `maskedUserId` populated (pattern: first 2 chars + `***` + last char if length &gt; 3; else `***`); **`userId` must be null** on this path.
+
+**Failure:** `"400"` if token missing/invalid/expired; `"300"` if no member row.
+
+---
+
+### `POST /auth/password-reset/request`
+
+**Purpose:** Set a **new password** after certification, without being logged in. Prove identity with **either** `recoveryToken` **or** `crtfcDnValue` (at least one required).
+
+**Request (JSON):**
+
+- `userSe` (string, required): must match the member type; if `recoveryToken` is used, must **equal** `userSe` inside the JWT claims.
+- `newPassword` (string, required): plain text; minimum length **8** characters (server-enforced).
+- `recoveryToken` (string, optional): same JWT as account-recovery id lookup.
+- `crtfcDnValue` (string, optional): DI when not using JWT.
+- `userId` (string, optional): if provided on the **DI-only** path, server **rejects** unless it equals `ARMUSER.USER_ID` for the resolved row (prevents mismatched client display).
+
+**Processing order:** If `recoveryToken` is non-empty, parse JWT → `(userSe, di)` must match request `userSe` → load row by DI + `userSe`. Else if `crtfcDnValue` is non-empty, load by DI + `userSe` and optional `userId` check. Else `"400"`.
+
+**Success (`resultCode` `"200"`):** Update `ARMUSER.PASSWORD`, `CHG_PWD_LAST_PNTTM`, `CHG_LAST_DT` for `ESNTL_ID`.
+
+**Failure:** `"400"` validation / token / userSe mismatch / optional `userId` mismatch; `"300"` no member or update affected 0 rows; `"500"` encryption failure.
+
+**MUST:**
+
+- Run password update in a **transaction** (`@Transactional` on the service method).
+- Whitelist these paths in **Spring Security** and exclude them from legacy **AuthenticInterceptor** so **unauthenticated** clients can call them.
+
+**MUST NOT:**
+
+- Store or log plain `newPassword` in application logs.
+- Accept password reset **without** either a valid `recoveryToken` or `crtfcDnValue` tied to an existing non-withdrawn row.
+
+---
+
+## 8. Coexistence with Legacy (eGov) Code
+
+- **Existing** eGov-style controllers and `.Ajax`/`.do` endpoints: **leave unchanged** unless the user explicitly asks to refactor.
+- **New features**: Add **new** REST controllers and methods that follow this rule; do not copy eGov patterns (e.g. `selectXxxList.Ajax`, `HttpServletRequest`, session in controller).
+- **Touching legacy**: If you must change existing eGov code, prefer moving **logic** into a Service and keeping the existing URL/response shape; do not broaden eGov-style patterns to new APIs.
+
+---
+
+## 9. Summary Checklist for New API Work
+
+When adding or editing an API in waterb_backend:
+
+1. **Controller**: `@RestController`, `ResponseEntity<T>`, no request/session/model, no business logic; use `@RequestPart("data")` + optional files for multipart.
+2. **DTO**: Separate request/response; validation on request DTOs; use `LocalDate`/`LocalDateTime` and enums where appropriate. **For any field named like `pXxx` or `cXxx` (single leading lowercase + uppercase), add `@JsonProperty("fieldName")`** so Jackson serializes/deserializes correctly (see §4.1).
+3. **Service**: All business and transaction logic; Controller only delegates. Do **not** map egovMap/List&lt;Object&gt; to DTO in Service; let MyBatis return DTO.
+4. **Mapper**: Use **DTO** for `parameterType` and `resultType` (not egovMap); register DTO packages in mapper-config.xml and use **short alias** in XML; use **UPPER_SNAKE_CASE** for all result column names/aliases in SQL (e.g. `USER_NM`, `ESNTL_ID`) — mapUnderscoreToCamelCase maps to DTO (see §6.3); clear SQL (e.g. explicit `SET col = NULL`).
+5. **URL**: Noun-based paths + HTTP method; no `.do`/`.Ajax` in new endpoints.
+6. **User-web `/auth/find-user-id`, `/auth/account-recovery/find-user-id`, `/auth/password-reset/request`**: Follow §7.2 (ARMUSER DI + `USER_SE`, non-`D` only, response `resultCode` contract).
+7. **Legacy**: Do not extend eGov patterns; new code = REST-only conventions above.
+
+If one API follows this structure, every new API should look like it — **consistency over personal style**.

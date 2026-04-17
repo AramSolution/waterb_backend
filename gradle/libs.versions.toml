@@ -1,0 +1,71 @@
+[versions]
+spring-boot = "3.5.6"
+tomcat-embed = "10.1.36"
+springdoc = "2.8.4"
+egovframe-rte = "5.0.0"
+commons-dbcp2 = "2.12.0"
+commons-codec = "1.17.1"
+commons-validator = "1.9.0"
+commons-fileupload = "1.5"
+cglib = "3.3.0"
+antlr4 = "4.13.2"
+commons-compress = "1.26.2"
+commons-lang3 = "3.17.0"
+hsqldb = "2.7.2"
+mysql-connector = "9.1.0"
+hibernate-validator = "8.0.1.Final"
+log4jdbc = "1.2"
+log4j-core = "2.24.3"
+jjwt = "0.12.6"
+icu4j = "75.1"
+yasson = "3.0.3"
+jakarta-json = "2.0.1"
+httpclient5 = "5.3.1"
+querydsl = "5.1.0"
+junit = "5.11.3"
+selenium = "4.28.1"
+lombok = "1.18.38"
+
+[libraries]
+org-springframework-boot-spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+org-apache-tomcat-embed-tomcat-embed-core = { module = "org.apache.tomcat.embed:tomcat-embed-core", version.ref = "tomcat-embed" }
+org-apache-tomcat-embed-tomcat-embed-el = { module = "org.apache.tomcat.embed:tomcat-embed-el", version.ref = "tomcat-embed" }
+org-apache-tomcat-embed-tomcat-embed-jasper = { module = "org.apache.tomcat.embed:tomcat-embed-jasper", version.ref = "tomcat-embed" }
+org-apache-tomcat-embed-tomcat-embed-websocket = { module = "org.apache.tomcat.embed:tomcat-embed-websocket", version.ref = "tomcat-embed" }
+org-apache-tomcat-tomcat-annotations-api = { module = "org.apache.tomcat:tomcat-annotations-api", version.ref = "tomcat-embed" }
+org-springframework-boot-spring-boot-devtools = { module = "org.springframework.boot:spring-boot-devtools", version.ref = "spring-boot" }
+org-springdoc-springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+org-egovframe-rte-egovframe-rte-ptl-mvc = { module = "org.egovframe.rte:egovframe-rte-ptl-mvc", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-psl-dataaccess = { module = "org.egovframe.rte:egovframe-rte-psl-dataaccess", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-fdl-idgnr = { module = "org.egovframe.rte:egovframe-rte-fdl-idgnr", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-fdl-property = { module = "org.egovframe.rte:egovframe-rte-fdl-property", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-fdl-string = { module = "org.egovframe.rte:egovframe-rte-fdl-string", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-fdl-crypto = { module = "org.egovframe.rte:egovframe-rte-fdl-crypto", version.ref = "egovframe-rte" }
+org-egovframe-rte-egovframe-rte-fdl-security = { module = "org.egovframe.rte:egovframe-rte-fdl-security", version.ref = "egovframe-rte" }
+org-apache-commons-commons-dbcp2 = { module = "org.apache.commons:commons-dbcp2", version.ref = "commons-dbcp2" }
+commons-codec-commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
+commons-validator-commons-validator = { module = "commons-validator:commons-validator", version.ref = "commons-validator" }
+org-apache-commons-commons-fileupload2-jakarta-servlet6 = { module = "commons-fileupload:commons-fileupload", version = "1.5" }
+cglib-cglib = { module = "cglib:cglib", version.ref = "cglib" }
+org-antlr-antlr4 = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4" }
+org-apache-commons-commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+org-apache-commons-commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+org-hsqldb-hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
+com-mysql-mysql-connector-j = { module = "com.mysql:mysql-connector-j", version.ref = "mysql-connector" }
+org-hibernate-validator-hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernate-validator" }
+com-googlecode-log4jdbc-log4jdbc = { module = "com.googlecode.log4jdbc:log4jdbc", version.ref = "log4jdbc" }
+org-apache-logging-log4j-log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j-core" }
+io-jsonwebtoken-jjwt = { module = "io.jsonwebtoken:jjwt", version.ref = "jjwt" }
+com-ibm-icu-icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
+org-eclipse-yasson = { module = "org.eclipse:yasson", version.ref = "yasson" }
+org-glassfish-jakarta-json = { module = "org.glassfish:jakarta.json", version.ref = "jakarta-json" }
+org-springframework-boot-spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+org-springframework-boot-spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "spring-boot" }
+org-apache-httpcomponents-client5-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "httpclient5" }
+com-querydsl-querydsl-jpa = { module = "com.querydsl:querydsl-jpa", version.ref = "querydsl" }
+junit-junit = { module = "junit:junit", version.ref = "junit" }
+org-seleniumhq-selenium-selenium-java = { module = "org.seleniumhq.selenium:selenium-java", version.ref = "selenium" }
+com-querydsl-querydsl-apt = { module = "com.querydsl:querydsl-apt", version.ref = "querydsl" }
+org-projectlombok-lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+

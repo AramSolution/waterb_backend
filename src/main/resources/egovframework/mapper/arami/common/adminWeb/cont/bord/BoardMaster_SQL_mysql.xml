@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="boardMasterDAO">
+
+        <!-- 게시판 종류 조회 -->
+        <select id="selectBBSMasterList" parameterType="egovMap" resultType="egovMap">
+                 SELECT *
+                   FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.BBS_ID DESC) AS RNUM
+                              , COALESCE(A2.BBS_ID   , '') AS BBS_ID
+                              , COALESCE(A2.SITE_ID  , '') AS SITE_ID
+                              , COALESCE(A2.BBS_SE   , '') AS BBS_SE
+                              , COALESCE(A2.BBS_NM   , '') AS BBS_NM
+                              , COALESCE(A2.BBS_DE   , '') AS BBS_DE
+                              , COALESCE(A2.TAG_USE_YN       , '') AS TAG_USE_YN
+                              , COALESCE(A2.ATCH_FILE_CNT    , '') AS ATCH_FILE_CNT
+                              , COALESCE(A2.ATCH_FILE_SIZE   , '') AS ATCH_FILE_SIZE
+                              , COALESCE(A2.REPLY_YN , '') AS REPLY_YN
+                              , COALESCE(A2.COMMENT_YN       , '') AS COMMENT_YN
+                              , COALESCE(DATE_FORMAT(A2.CRT_DATE , '%Y-%m-%d')       , '') AS CRT_DATE
+                              , COALESCE(D2.CHG_USER_ID      , '') AS CHG_USER_ID
+                              , COALESCE(A2.STTUS_CODE       , '') AS STTUS_CODE
+                              , CASE WHEN COALESCE(A2.STTUS_CODE       , '') = 'A' THEN '정상' ELSE '삭제' END AS STTUS_CODE_NM
+                              , COALESCE(B2.CODE_NM  , '') AS BBS_SE_NM
+                       FROM ARMBORD A2
+                       LEFT OUTER JOIN (SELECT CODE_ID
+                                             , CODE
+                                             , CODE_NM
+                                         FROM LETTCCMMNDETAILCODE
+                                        WHERE CODE_ID = 'ARM001'
+                                          AND USE_AT = 'Y') B2 ON A2.BBS_SE = B2.CODE
+                       LEFT OUTER JOIN (SELECT D3.ESNTL_ID
+                                             , D3.EMPLYR_ID AS CHG_USER_ID
+                                             , D3.USER_NM   AS USER_NM
+                                         FROM LETTNEMPLYRINFO D3) D2 ON A2.CHG_USER_ID = D2.ESNTL_ID
+                                        WHERE A2.STTUS_CODE = 'A'
+                                        <if test='searchCondition == "1"'>
+                                         AND A2.BBS_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                                        </if>
+                                        <if test='searchCondition == "2"'>
+                                       	 AND A2.BBS_DE LIKE CONCAT('%', #{searchKeyword}, '%')
+                                        </if>
+                                        AND A2.TARGET_GBN = #{targetGbn}
+                                        <!-- 테이블 필터 조건 추가 -->
+                                        <if test="filterBbsNm != null and filterBbsNm != ''">
+                                         AND A2.BBS_NM LIKE CONCAT('%', #{filterBbsNm}, '%')
+                                        </if>
+                                        <if test="filterBbsDe != null and filterBbsDe != ''">
+                                         AND A2.BBS_DE LIKE CONCAT('%', #{filterBbsDe}, '%')
+                                        </if>
+                                        <if test="filterBbsSeNm != null and filterBbsSeNm != ''">
+                                         AND B2.CODE_NM LIKE CONCAT('%', #{filterBbsSeNm}, '%')
+                                        </if>
+                                        <if test="filterSttusCode != null and filterSttusCode != ''">
+                                         AND A2.STTUS_CODE = #{filterSttusCode}
+                                        </if>
+                           ) A1
+                     LIMIT #{lengthPage} OFFSET #{startIndex}
+    </select>
+
+    <!-- 게시판 엑셀 리스트 조회 (페이지네이션 제외) -->
+    <select id="selectBBSMasterExcelList" parameterType="egovMap" resultType="egovMap">
+                 SELECT COALESCE(A2.BBS_ID   , '') AS BBS_ID
+                      , COALESCE(A2.SITE_ID  , '') AS SITE_ID
+                      , COALESCE(A2.BBS_SE   , '') AS BBS_SE
+                      , COALESCE(A2.BBS_NM   , '') AS BBS_NM
+                      , COALESCE(A2.BBS_DE   , '') AS BBS_DE
+                      , COALESCE(A2.TAG_USE_YN       , '') AS TAG_USE_YN
+                      , COALESCE(A2.ATCH_FILE_CNT    , '') AS ATCH_FILE_CNT
+                      , COALESCE(A2.ATCH_FILE_SIZE   , '') AS ATCH_FILE_SIZE
+                      , COALESCE(A2.REPLY_YN , '') AS REPLY_YN
+                      , COALESCE(A2.COMMENT_YN       , '') AS COMMENT_YN
+                      , COALESCE(DATE_FORMAT(A2.CRT_DATE , '%Y-%m-%d')       , '') AS CRT_DATE
+                      , COALESCE(D2.CHG_USER_ID      , '') AS CHG_USER_ID
+                      , COALESCE(A2.STTUS_CODE       , '') AS STTUS_CODE
+                      , CASE WHEN COALESCE(A2.STTUS_CODE       , '') = 'A' THEN '정상' ELSE '삭제' END AS STTUS_CODE_NM
+                      , COALESCE(B2.CODE_NM  , '') AS BBS_SE_NM
+                 FROM ARMBORD A2
+                 LEFT OUTER JOIN (SELECT CODE_ID
+                                       , CODE
+                                       , CODE_NM
+                                   FROM LETTCCMMNDETAILCODE
+                                  WHERE CODE_ID = 'ARM001'
+                                    AND USE_AT = 'Y') B2 ON A2.BBS_SE = B2.CODE
+                 LEFT OUTER JOIN (SELECT D3.ESNTL_ID
+                                       , D3.EMPLYR_ID AS CHG_USER_ID
+                                       , D3.USER_NM   AS USER_NM
+                                   FROM LETTNEMPLYRINFO D3) D2 ON A2.CHG_USER_ID = D2.ESNTL_ID
+                WHERE A2.STTUS_CODE = 'A'
+                  <if test='searchCondition == "1"'>
+                  AND A2.BBS_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                  </if>
+                  <if test='searchCondition == "2"'>
+                  AND A2.BBS_DE LIKE CONCAT('%', #{searchKeyword}, '%')
+                  </if>
+                  AND A2.TARGET_GBN = #{targetGbn}
+                  <!-- 테이블 필터 조건 추가 -->
+                  <if test="filterBbsNm != null and filterBbsNm != ''">
+                   AND A2.BBS_NM LIKE CONCAT('%', #{filterBbsNm}, '%')
+                  </if>
+                  <if test="filterBbsDe != null and filterBbsDe != ''">
+                   AND A2.BBS_DE LIKE CONCAT('%', #{filterBbsDe}, '%')
+                  </if>
+                  <if test="filterBbsSeNm != null and filterBbsSeNm != ''">
+                   AND B2.CODE_NM LIKE CONCAT('%', #{filterBbsSeNm}, '%')
+                  </if>
+                  <if test="filterSttusCode != null and filterSttusCode != ''">
+                   AND A2.STTUS_CODE = #{filterSttusCode}
+                  </if>
+                ORDER BY A2.BBS_ID DESC
+    </select>
+
+    <select id="selectBBSMasterListCount" parameterType="egovMap" resultType="int">
+                 SELECT COUNT(1) AS LIST_CNT
+                  FROM (SELECT ROW_NUMBER() OVER (ORDER BY A2.BBS_ID) AS RNUM
+                                                         , COALESCE(A2.BBS_ID   , '') AS BBS_ID
+                                                         , COALESCE(A2.SITE_ID  , '') AS SITE_ID
+                                                         , COALESCE(A2.BBS_SE   , '') AS BBS_SE
+                                                         , COALESCE(A2.BBS_NM   , '') AS BBS_NM
+                                                         , COALESCE(A2.BBS_DE   , '') AS BBS_DE
+                                                         , COALESCE(A2.TAG_USE_YN       , '') AS TAG_USE_YN
+                                                         , COALESCE(A2.ATCH_FILE_CNT    , '') AS ATCH_FILE_CNT
+                                                         , COALESCE(A2.ATCH_FILE_SIZE   , '') AS ATCH_FILE_SIZE
+                                                         , COALESCE(A2.REPLY_YN , '') AS REPLY_YN
+                                                         , COALESCE(A2.COMMENT_YN       , '') AS COMMENT_YN
+                                                         , COALESCE(DATE_FORMAT(A2.CRT_DATE , '%Y-%m-%d')       , '') AS CRT_DATE
+                                                         , COALESCE(D2.CHG_USER_ID      , '') AS CHG_USER_ID
+                                                         , COALESCE(A2.STTUS_CODE       , '') AS STTUS_CODE
+                                                         , COALESCE(B2.CODE_NM  , '') AS CODE_NM
+                                                  FROM ARMBORD A2
+                                                  LEFT OUTER JOIN (SELECT CODE_ID
+                                                                                                , CODE
+                                                                                                , CODE_NM
+                                                                                                FROM LETTCCMMNDETAILCODE
+                                                                                                WHERE CODE_ID = 'ARM001'
+                                                                                                AND USE_AT = 'Y') B2 ON A2.BBS_SE = B2.CODE
+                                                  LEFT OUTER JOIN (SELECT D3.ESNTL_ID
+                                                                                                                         , D3.EMPLYR_ID AS CHG_USER_ID
+                                                                                                                         , D3.USER_NM   AS USER_NM
+                                                                                                           FROM LETTNEMPLYRINFO D3) D2 ON A2.CHG_USER_ID = D2.ESNTL_ID
+                 WHERE A2.STTUS_CODE = 'A'
+                         <if test='searchCondition == "1"'>
+                       AND A2.BBS_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+                     </if>
+                         <if test='searchCondition == "2"'>
+                       AND A2.BBS_DE LIKE CONCAT('%', #{searchKeyword}, '%')
+                         </if>
+                         AND A2.TARGET_GBN = #{targetGbn}
+                         <!-- 테이블 필터 조건 추가 -->
+                         <if test="filterBbsNm != null and filterBbsNm != ''">
+                          AND A2.BBS_NM LIKE CONCAT('%', #{filterBbsNm}, '%')
+                         </if>
+                         <if test="filterBbsDe != null and filterBbsDe != ''">
+                          AND A2.BBS_DE LIKE CONCAT('%', #{filterBbsDe}, '%')
+                         </if>
+                         <if test="filterBbsSeNm != null and filterBbsSeNm != ''">
+                          AND B2.CODE_NM LIKE CONCAT('%', #{filterBbsSeNm}, '%')
+                         </if>
+                         <if test="filterSttusCode != null and filterSttusCode != ''">
+                          AND A2.STTUS_CODE = #{filterSttusCode}
+                         </if>
+                        )A1
+    </select>
+
+    <select id="selectBoardMasterDetail" parameterType="egovMap" resultType="egovMap">
+                SELECT A1.BBS_ID
+                     , A1.SITE_ID
+                     , A1.BBS_SE
+                     , A1.TARGET_GBN
+                     , A1.BBS_NM
+                     , COALESCE(A1.BBS_DE, '') AS BBS_DE
+                     , A1.TAG_USE_YN
+                     , COALESCE(A1.ATCH_FILE_CNT , 0) AS ATCH_FILE_CNT
+                     , COALESCE(A1.ATCH_FILE_SIZE, 0) AS ATCH_FILE_SIZE
+                     , A1.REPLY_YN
+                     , A1.COMMENT_YN
+                     , A1.READ_ROLE
+                     , A1.WRITE_ROLE
+                     , A1.DELETE_ROLE
+                     , A1.SECRET_YN
+                     , A1.CAPTCHA_AT
+                     , A1.PASS_AT
+                     , A1.PAGE_PER_LEN
+                     , A1.PAGE_LEN
+                     , A1.USE_MHRLS
+                     , COALESCE(A1.CHRG_DEPT , '') AS CHRG_DEPT
+                     , COALESCE(A1.CHARGER_NM, '') AS CHARGER_NM
+                     , COALESCE(A1.TLPHON_NO , '') AS TLPHON_NO
+                  FROM ARMBORD A1
+                 WHERE A1.BBS_ID = #{bbsId}
+    </select>
+
+    <!-- 게시판 종류 조회 -->
+        <select id="selectCmmCodeDetail" parameterType="egovMap" resultType="egovMap">
+                 SELECT CODE_ID
+                          , CODE
+                          , CODE_NM
+                          , CODE_DC
+                   FROM LETTCCMMNDETAILCODE
+                  WHERE CODE_ID = 'ARM001'
+                    AND USE_AT = 'Y'
+    </select>
+
+    <!-- 다음 게시판ID 채번 -->
+    <select id="getNextStringId" parameterType="egovMap" resultType="string">
+            SELECT CONCAT('BBS_', LPAD(COALESCE(SUBSTRING(MAX(A1.BBS_ID), 5, 16), 0) + 1, 16, 0)) AS E_COUP_ID
+                  FROM ARMBORD A1
+    </select>
+
+    <!-- 게시판 종류 등록 -->
+    <insert id="insertBBSMaster" parameterType="egovMap">
+            INSERT INTO ARMBORD ( BBS_ID
+                                , SITE_ID
+                                , TARGET_GBN
+                                , BBS_SE
+                                , BBS_NM
+                                , BBS_DE
+                                , TAG_USE_YN
+                                , ATCH_FILE_CNT
+                                , ATCH_FILE_SIZE
+                                , REPLY_YN
+                                , COMMENT_YN
+                                , READ_ROLE
+                                , WRITE_ROLE
+                                , DELETE_ROLE
+                                , SECRET_YN
+                                , CAPTCHA_AT
+                                , PASS_AT
+                                , PAGE_PER_LEN
+                                , PAGE_LEN
+                                , USE_MHRLS
+                                , CHRG_DEPT
+                                , CHARGER_NM
+                                , TLPHON_NO
+                                , STTUS_CODE
+                                , CHG_USER_ID
+                                , CRT_DATE
+                                , CHG_DATE
+                       ) VALUES ( #{bbsId}
+                                , #{siteId} 
+                                , #{targetGbn}
+                                , #{bbsSe}
+                                , #{bbsNm}
+                                , #{bbsDe}
+                                , #{tagUseYn}
+                                , #{atchFileCnt}
+                                , #{atchFileSize}
+                                , #{replyYn}
+                                , #{commentYn}
+                                , #{readRole}
+                                , #{writeRole}
+                                , #{deleteRole}
+                                , #{secretYn}
+                                , #{captchaAt}
+                                , #{passAt}
+                                , #{pagePerLen}
+                                , #{pageLen}
+                                , #{useMhrls}
+                                , #{chrgDept}
+                                , #{chargerNm}
+                                , REPLACE( #{tlphonNo} , '-', '' )
+                                , #{sttusCode}
+                                , #{uniqId}
+                                , NOW()
+                                , NOW()
+        )
+    </insert>
+
+    <!-- 게시판관리 게시판 수정 페이지 조회 -->
+    <select id="selectBBSMasterDetail" parameterType="egovMap" resultType="egovMap">
+        SELECT COALESCE(A2.BBS_ID                       , '') AS BBS_ID
+             , COALESCE(A2.SITE_ID                      , '') AS SITE_ID
+             , COALESCE(A2.BBS_SE                       , '') AS BBS_SE
+             , COALESCE(A2.BBS_NM                       , '') AS BBS_NM
+             , COALESCE(A2.BBS_DE                       , '') AS BBS_DE
+             , COALESCE(A2.TAG_USE_YN                   , '') AS TAG_USE_YN
+             , COALESCE(A2.ATCH_FILE_CNT                , '') AS ATCH_FILE_CNT
+             , COALESCE(A2.ATCH_FILE_SIZE               , '') AS ATCH_FILE_SIZE
+             , COALESCE(A2.REPLY_YN                     , '') AS REPLY_YN
+             , COALESCE(A2.COMMENT_YN                   , '') AS COMMENT_YN
+             , COALESCE(A2.READ_ROLE                    , '') AS READ_ROLE
+             , COALESCE(A2.WRITE_ROLE                   , '') AS WRITE_ROLE
+             , COALESCE(A2.DELETE_ROLE                  , '') AS DELETE_ROLE
+             , COALESCE(A2.SECRET_YN                    , '') AS SECRET_YN
+             , COALESCE(A2.CAPTCHA_AT                   , '') AS CAPTCHA_AT
+             , COALESCE(A2.PASS_AT                      , '') AS PASS_AT
+             , COALESCE(A2.PAGE_PER_LEN                 , '') AS PAGE_PER_LEN
+             , COALESCE(A2.PAGE_LEN                     , '') AS PAGE_LEN
+             , COALESCE(A2.USE_MHRLS                    , '') AS USE_MHRLS
+             , COALESCE(A2.CHRG_DEPT                    , '') AS CHRG_DEPT
+             , COALESCE(A2.CHARGER_NM                   , '') AS CHARGER_NM
+             , COALESCE(FN_MASK_PHONE(A2.TLPHON_NO, 'N'), '') AS TLPHON_NO
+             , COALESCE(DATE_FORMAT(A2.CRT_DATE, '%Y-%m-%d'), '') AS CRT_DATE
+             , COALESCE(A2.STTUS_CODE                   , '') AS STTUS_CODE
+             , COALESCE(B2.CODE_NM                      , '') AS CODE_NM
+          FROM ARMBORD A2 LEFT OUTER JOIN (SELECT CODE, CODE_NM
+                                             FROM LETTCCMMNDETAILCODE
+                                            WHERE CODE_ID = 'ARM001') B2
+                            ON A2.BBS_SE = B2.CODE
+         WHERE A2.BBS_ID = #{bbsId}
+    </select>
+
+    <!-- 게시판 종류 수정 -->
+    <update id="updateBBSMaster" parameterType="egovMap">
+        UPDATE ARMBORD
+                        SET SITE_ID = #{siteId}
+                          , BBS_SE  = #{bbsSe}
+                          , BBS_NM  = #{bbsNm}
+                          , BBS_DE  = #{bbsDe}
+                          , TAG_USE_YN  = #{tagUseYn}
+                          , ATCH_FILE_CNT  = #{atchFileCnt}
+                          , ATCH_FILE_SIZE  = #{atchFileSize}
+                          , REPLY_YN  = #{replyYn}
+                          , COMMENT_YN  = #{commentYn}
+                          , READ_ROLE  = #{readRole}
+                          , WRITE_ROLE  = #{writeRole}
+                          , DELETE_ROLE  = #{deleteRole}
+                          , SECRET_YN  = #{secretYn}
+                          , CAPTCHA_AT  = #{captchaAt}
+                          , PASS_AT  = #{passAt}
+                          , PAGE_PER_LEN  = #{pagePerLen}
+                          , PAGE_LEN  = #{pageLen}
+                          , USE_MHRLS  = #{useMhrls}
+                          , CHRG_DEPT  = #{chrgDept}
+                          , CHARGER_NM  = #{chargerNm}
+                          , TLPHON_NO  = REPLACE( #{tlphonNo} , '-', '' )
+                          , STTUS_CODE  = #{sttusCode}
+                          , CHG_USER_ID  = #{uniqId}
+                          , CHG_DATE  = NOW()
+                          WHERE BBS_ID  = #{bbsId}
+    </update>
+
+    <!--게시판 삭제  -->
+    <update id="deleteBBSMaster" parameterType="egovMap">
+        UPDATE ARMBORD
+           SET STTUS_CODE = 'D'
+             , CHG_USER_ID = #{uniqId}
+             , CHG_DATE = NOW()
+         WHERE BBS_ID = #{bbsId}
+    </update>
+
+</mapper>

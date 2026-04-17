@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="memberLoginDAO">
+	<!-- 로그인 처리를 위한 resultMap -->
+	<resultMap id="login" type="egovframework.com.cmm.LoginVO">
+		<result property="id" column="ID"/>
+		<result property="name" column="NAME"/>
+		<result property="ihidNum" column="IHID_NUM"/>
+		<result property="email" column="EMAIL"/>
+		<result property="password" column="PASSWORD"/>
+		<result property="userSe" column="USER_SE"/>
+		<result property="orgnztId" column="ORGNZT_ID"/>
+		<result property="uniqId" column="UNIQ_ID"/>
+		<result property="role" column="UNIQ_ID"/>
+		<result property="groupNm" column="GROUP_NM"/>
+	</resultMap>
+
+	<!-- 아이디 찾기를 위한 resultMap -->
+	<resultMap id="id" type="egovframework.com.cmm.LoginVO">
+		<result property="id" column="ID"/>
+	</resultMap>
+
+	<!-- 비밀번호 처리를 위한 resultMap -->
+	<resultMap id="password" type="egovframework.com.cmm.LoginVO">
+		<result property="password" column="PASSWORD"/>
+	</resultMap>
+
+	<!-- 일반 로그인 -->
+	<select id="actionLogin" resultMap="login">
+		SELECT A1.USER_ID 			AS ID
+			 , DECRYPT(A1.USER_NM) 			AS NAME
+			 , A1.PASSWORD 			AS PASSWORD
+			 , A1.IHIDNUM 			AS IHID_NUM
+			 , DECRYPT(A1.EMAIL_ADRES) 		AS EMAIL
+			 , A1.USER_SE 	   	    AS USER_SE
+			 , A1.ORGNZT_ID 		AS ORGNZT_ID
+			 , A1.ESNTL_ID 			AS UNIQ_ID
+			 , A1.GROUP_ID 			AS GROUP_ID
+			 , B1.GROUP_NM 			AS GROUP_NM
+		  FROM ARMUSER A1 LEFT OUTER JOIN LETTNAUTHORGROUPINFO B1
+						   ON A1.GROUP_ID = B1.GROUP_ID
+		 WHERE A1.USER_SE = #{userSe}
+		   AND A1.USER_ID = #{id}
+		   AND A1.PASSWORD = #{password}
+		   AND A1.MBER_STTUS = 'P'
+	</select>
+
+	<!-- OAuth 기존 회원 조회: ID를 이메일로 통일한 정책으로 USER_ID(아이디)=OAuth이메일 로 비교 -->
+	<select id="actionLoginByOAuthEmail" resultMap="login">
+		SELECT A1.USER_ID 			AS ID
+			 , DECRYPT(A1.USER_NM) 			AS NAME
+			 , A1.PASSWORD 			AS PASSWORD
+			 , A1.IHIDNUM 			AS IHID_NUM
+			 , DECRYPT(A1.EMAIL_ADRES) 		AS EMAIL
+			 , A1.USER_SE 	   	    AS USER_SE
+			 , A1.ORGNZT_ID 		AS ORGNZT_ID
+			 , A1.ESNTL_ID 			AS UNIQ_ID
+			 , A1.GROUP_ID 			AS GROUP_ID
+			 , B1.GROUP_NM 			AS GROUP_NM
+		  FROM ARMUSER A1 LEFT OUTER JOIN LETTNAUTHORGROUPINFO B1
+						   ON A1.GROUP_ID = B1.GROUP_ID
+		 WHERE A1.USER_ID = #{email}
+		   AND A1.USER_SE = #{userSe}
+		   AND A1.MBER_STTUS = 'P'
+	</select>
+
+	<!-- OAuth 즉시가입: USER_ID(=OAuth 이메일)로 이미 가입된 회원의 USER_SE (다른 유형 중복 가입 판별용) -->
+	<select id="selectUserSeByOauthUserId" parameterType="string" resultType="string">
+		SELECT A1.USER_SE
+		  FROM ARMUSER A1
+		 WHERE A1.USER_ID = #{_parameter}
+		   AND A1.MBER_STTUS = 'P'
+		 LIMIT 1
+	</select>
+
+	<!-- 본인인증 DI + USER_SE로 로그인 아이디 조회 (아이디/비밀번호 찾기). 탈퇴(D)만 제외 — 승인대기(A)·정상(P) 등 모두 허용 -->
+	<select id="selectUserIdByCrtfcDnAndUserSe" parameterType="CrtfcDnUserSeParam" resultType="string">
+		SELECT A1.USER_ID
+		  FROM ARMUSER A1
+		 WHERE A1.CRTFC_DN_VALUE = #{crtfcDnValue}
+		   AND A1.USER_SE = #{userSe}
+		   AND IFNULL(A1.MBER_STTUS, '') <![CDATA[<>]]> 'D'
+		 LIMIT 1
+	</select>
+
+	<!-- 동일 조건으로 ESNTL_ID + USER_ID 조회 (비밀번호 재설정) -->
+	<select id="selectRecoveryMemberByCrtfcDnAndUserSe" parameterType="CrtfcDnUserSeParam" resultType="RecoveryMemberRow">
+		SELECT A1.ESNTL_ID AS ESNTL_ID
+		     , A1.USER_ID AS USER_ID
+		  FROM ARMUSER A1
+		 WHERE A1.CRTFC_DN_VALUE = #{crtfcDnValue}
+		   AND A1.USER_SE = #{userSe}
+		   AND IFNULL(A1.MBER_STTUS, '') <![CDATA[<>]]> 'D'
+		 LIMIT 1
+	</select>
+
+	<!-- 본인인증 기반 비밀번호 재설정 -->
+	<update id="updatePasswordByEsntlId" parameterType="PasswordUpdateParam">
+		UPDATE ARMUSER
+		   SET PASSWORD = #{encryptedPassword}
+		     , CHG_PWD_LAST_PNTTM = NOW()
+		     , CHG_LAST_DT = NOW()
+		 WHERE ESNTL_ID = #{esntlId}
+		   AND IFNULL(MBER_STTUS, '') <![CDATA[<>]]> 'D'
+	</update>
+
+	<!-- OAuth 회원 + 연동 상태 조회 (email 기준) -->
+	<select id="selectOAuthJoinCheck" parameterType="map" resultType="arami.common.auth.service.dto.OAuthJoinCheckResult">
+		SELECT A1.ESNTL_ID      AS ESNTL_ID
+		     , A1.USER_ID       AS USER_ID
+		     , A1.USER_SE       AS USER_SE
+		     , A1.MBER_STTUS    AS MBER_STTUS
+		     , COALESCE(A1.OAUTH_GB, '')       AS OAUTH_GB
+		     , COALESCE(A1.NAVER_AUTH_ID, '')  AS NAVER_AUTH_ID
+		     , COALESCE(A1.KAKAO_AUTH_ID, '')  AS KAKAO_AUTH_ID
+		  FROM ARMUSER A1
+		 WHERE A1.USER_ID = #{email}
+		   AND A1.USER_SE = #{userSe}
+		   AND A1.MBER_STTUS = 'P'
+	</select>
+
+	<!-- MY PAGE 연결: 다른 회원의 네이버 OAuth id 중복 여부 -->
+	<select id="selectEsntlIdByNaverAuthIdExcluding" parameterType="map" resultType="string">
+		SELECT A1.ESNTL_ID
+		  FROM ARMUSER A1
+		 WHERE A1.NAVER_AUTH_ID = #{naverAuthId}
+		   AND A1.MBER_STTUS = 'P'
+		   AND A1.ESNTL_ID &lt;&gt; #{excludeEsntlId}
+		 LIMIT 1
+	</select>
+
+	<!-- MY PAGE 연결: 다른 회원의 카카오 OAuth id 중복 여부 -->
+	<select id="selectEsntlIdByKakaoAuthIdExcluding" parameterType="map" resultType="string">
+		SELECT A1.ESNTL_ID
+		  FROM ARMUSER A1
+		 WHERE A1.KAKAO_AUTH_ID = #{kakaoAuthId}
+		   AND A1.MBER_STTUS = 'P'
+		   AND A1.ESNTL_ID &lt;&gt; #{excludeEsntlId}
+		 LIMIT 1
+	</select>
+
+	<!-- OAuth 연동 정보 저장 -->
+	<update id="updateOAuthId" parameterType="map">
+		UPDATE ARMUSER
+		   SET OAUTH_GB = #{oauthGb}
+		     <if test="naverAuthId != null and naverAuthId != ''">
+		     , NAVER_AUTH_ID = #{naverAuthId}
+		     </if>
+		     <if test="kakaoAuthId != null and kakaoAuthId != ''">
+		     , KAKAO_AUTH_ID = #{kakaoAuthId}
+		     </if>
+		     , CHG_LAST_DT = NOW()
+		 WHERE ESNTL_ID = #{esntlId}
+	</update>
+
+	<!-- OAuth 연동 해지 -->
+	<update id="unlinkOAuthId" parameterType="map">
+		UPDATE ARMUSER
+		   <choose>
+		       <when test="oauthService != null and oauthService == 'naver'">
+		           SET
+		               NAVER_AUTH_ID = '',
+		               OAUTH_GB = CASE
+		                           WHEN COALESCE(KAKAO_AUTH_ID, '') &lt;&gt; '' THEN '02'
+		                           ELSE '00'
+		                          END,
+		               CHG_LAST_DT = NOW()
+		       </when>
+		       <when test="oauthService != null and oauthService == 'kakao'">
+		           SET
+		               KAKAO_AUTH_ID = '',
+		               OAUTH_GB = CASE
+		                           WHEN COALESCE(NAVER_AUTH_ID, '') &lt;&gt; '' THEN '01'
+		                           ELSE '00'
+		                          END,
+		               CHG_LAST_DT = NOW()
+		       </when>
+		       <otherwise>
+		           SET CHG_LAST_DT = NOW()
+		       </otherwise>
+		   </choose>
+		 WHERE ESNTL_ID = #{esntlId}
+	</update>
+
+	<!-- ESNTL_ID 기반 로그인 정보 조회 (JWT 발급용) -->
+	<select id="actionLoginByEsntlId" resultMap="login" parameterType="string">
+		SELECT A1.USER_ID 			AS ID
+			 , DECRYPT(A1.USER_NM) 			AS NAME
+			 , A1.PASSWORD 			AS PASSWORD
+			 , A1.IHIDNUM 			AS IHID_NUM
+			 , DECRYPT(A1.EMAIL_ADRES) 		AS EMAIL
+			 , A1.USER_SE 	   	    AS USER_SE
+			 , A1.ORGNZT_ID 		AS ORGNZT_ID
+			 , A1.ESNTL_ID 			AS UNIQ_ID
+			 , A1.GROUP_ID 			AS GROUP_ID
+			 , B1.GROUP_NM 			AS GROUP_NM
+		  FROM ARMUSER A1 LEFT OUTER JOIN LETTNAUTHORGROUPINFO B1
+						   ON A1.GROUP_ID = B1.GROUP_ID
+		 WHERE A1.ESNTL_ID = #{_parameter}
+		   AND A1.MBER_STTUS = 'P'
+	</select>
+
+	<!-- 인증서 로그인 -->
+	<select id="actionCrtfctLogin" resultMap="login">
+
+		SELECT EMPLYR_ID 			AS ID
+		     , DECRYPT(USER_NM) 				AS NAME
+		     , PASSWORD 			AS PASSWORD
+		     , IHIDNUM 				AS IHID_NUM
+		     , DECRYPT(EMAIL_ADRES) 			AS EMAIL
+		     , 'USR' 				AS USER_SE
+		     , ORGNZT_ID 			AS ORGNZT_ID
+		     , ESNTL_ID 			AS UNIQ_ID
+		  FROM LETTNEMPLYRINFO
+		 WHERE CRTFC_DN_VALUE = #{dn}
+
+	</select>
+
+	<!-- 아이디 찾기 -->
+	<select id="searchId" resultMap="id">
+		<!-- 일반회원 -->
+		<if test="userSe == &quot;GNR&quot;">
+
+			SELECT MBER_ID 				AS ID
+			  FROM LETTNGNRLMBER
+			 WHERE MBER_NM = #{name}
+			   AND MBER_EMAIL_ADRES = #{email}
+			   AND MBER_STTUS = 'P'
+
+		</if>
+		<!-- 기업회원 -->
+		<if test="userSe == &quot;ENT&quot;">
+
+			SELECT ENTRPRS_MBER_ID 			AS ID
+			  FROM LETTNENTRPRSMBER
+			 WHERE CMPNY_NM = #{name}
+			   AND APPLCNT_EMAIL_ADRES = #{email}
+			   AND ENTRPRS_MBER_STTUS = 'P'
+
+		</if>
+		<!-- 업무사용자 -->
+		<if test="userSe == &quot;USR&quot;">
+
+			SELECT EMPLYR_ID 			AS ID
+			  FROM LETTNEMPLYRINFO
+			 WHERE DECRYPT(USER_NM) = #{name}
+			   AND EMAIL_ADRES = #{email}
+			   AND EMPLYR_STTUS_CODE = 'P'
+
+		</if>
+	</select>
+
+	<!-- 비밀번호 찾기 -->
+	<select id="searchPassword" resultMap="password">
+		<!-- 일반회원 -->
+		<if test="userSe == &quot;GNR&quot;">
+
+			SELECT PASSWORD 			AS PASSWORD
+			  FROM LETTNGNRLMBER
+			 WHERE MBER_ID = #{id}
+			   AND MBER_NM = #{name}
+			   AND MBER_EMAIL_ADRES = #{email}
+			   AND PASSWORD_HINT = #{passwordHint}
+			   AND PASSWORD_CNSR = #{passwordCnsr}
+			   AND MBER_STTUS = 'P'
+
+		</if>
+		<!-- 기업회원 -->
+		<if test="userSe == &quot;ENT&quot;">
+
+			SELECT ENTRPRS_MBER_PASSWORD 	AS PASSWORD
+			  FROM LETTNENTRPRSMBER
+			 WHERE ENTRPRS_MBER_ID = #{id}
+			   AND CMPNY_NM = #{name}
+			   AND APPLCNT_EMAIL_ADRES = #{email}
+			   AND ENTRPRS_MBER_PASSWORD_HINT = #{passwordHint}
+			   AND ENTRPRS_MBER_PASSWORD_CNSR = #{passwordCnsr}
+			   AND ENTRPRS_MBER_STTUS = 'P'
+
+		</if>
+		<!-- 업무사용자 -->
+		<if test="userSe == &quot;USR&quot;">
+
+			SELECT PASSWORD 			AS PASSWORD
+			  FROM LETTNEMPLYRINFO
+			 WHERE EMPLYR_ID = #{id}
+			   AND DECRYPT(USER_NM) = #{name}
+			   AND EMAIL_ADRES = #{email}
+			   AND PASSWORD_HINT = #{passwordHint}
+			   AND PASSWORD_CNSR = #{passwordCnsr}
+			   AND EMPLYR_STTUS_CODE = 'P'
+
+		</if>
+	</select>
+
+	<!-- 변경된 비밀번호를 저장 -->
+	<update id="updatePassword">
+		<!-- 일반회원 -->
+		<if test="userSe == &quot;GNR&quot;">
+
+			UPDATE LETTNGNRLMBER
+			   SET PASSWORD = #{password}
+			 WHERE MBER_ID = #{id}
+
+		</if>
+		<!-- 기업회원 -->
+		<if test="userSe == &quot;ENT&quot;">
+
+			UPDATE LETTNENTRPRSMBER
+			   SET ENTRPRS_MBER_PASSWORD = #{password}
+			 WHERE ENTRPRS_MBER_ID = #{id}
+
+		</if>
+		<!-- 업무사용자 -->
+		<if test="userSe == &quot;USR&quot;">
+
+			UPDATE LETTNEMPLYRINFO
+			   SET PASSWORD = #{password}
+			 WHERE EMPLYR_ID = #{id}
+
+		</if>
+	</update>
+
+</mapper>
