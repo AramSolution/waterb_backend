@@ -1,9 +1,13 @@
 package egovframework.com.security;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import arami.common.auth.service.AuthRoleManageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.boot.web.servlet.MultipartConfigFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,6 +60,9 @@ public class SecurityConfig {
 
     @Autowired
     private AuthRoleManageService authRoleManageService;
+
+    @Autowired
+    private Environment environment;
 
     /** EgovPropertyService */
     @Resource(name = "propertiesService")
@@ -140,7 +147,31 @@ public class SecurityConfig {
             allowedOrigins.add("http://localhost:3000");
         }
 
-        configuration.setAllowedOrigins(allowedOrigins);
+        boolean devLikeProfile = Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(p -> p.equalsIgnoreCase("dev") || p.equalsIgnoreCase("local"));
+        /*
+         * next dev --hostname 0.0.0.0 후 http://192.168.x.x:3000 으로 접속하면 Origin이 LAN IP가 된다.
+         * Globals.Allow.Origin 에만 localhost 가 있으면 CORS 실패 → 브라우저는 fetch 를 "Failed to fetch" 로만 표시.
+         */
+        if (devLikeProfile) {
+            Set<String> patterns = new LinkedHashSet<>();
+            patterns.add("http://localhost:*");
+            patterns.add("http://127.0.0.1:*");
+            patterns.add("http://192.168.*:*");
+            patterns.add("http://10.*:*");
+            for (String origin : allowedOrigins) {
+                if (origin == null || origin.isEmpty()) {
+                    continue;
+                }
+                String o = origin.trim().replaceAll("/$", "");
+                if (o.startsWith("http://") || o.startsWith("https://")) {
+                    patterns.add(o.endsWith("*") ? o : o + "*");
+                }
+            }
+            configuration.setAllowedOriginPatterns(new ArrayList<>(patterns));
+        } else {
+            configuration.setAllowedOrigins(allowedOrigins);
+        }
         configuration.setAllowedMethods(Arrays.asList("HEAD", "POST", "GET", "DELETE", "PUT", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

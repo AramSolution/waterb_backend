@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 사용자웹 멘토 신청 API의 JSON 파트. 저장 시 {@code edream.artapmm}(ARTAPMM)에 매핑된다.
- * <p>[WATERB_MIGRATION_C] {@code edream}은 MySQL 스키마명이다. DB를 {@code waterb} 등으로 옮기면 JPA/MyBatis·권한·문서와 함께 점검.
+ * 사용자웹 멘토 신청 API의 JSON 파트. 저장 시 {@code water} 스키마의 ARTAPMM 테이블에 매핑된다.
+ * <p>스키마명은 JDBC {@code Globals.mysql.Url}의 기본 데이터베이스와 일치한다.
  * <p>
  * {@code REQ_ESNTL_ID}(신청자)는 ARTAPMM 컬럼이나 본 DTO에 포함하지 않으며, 서버에서 로그인 사용자로만 설정한다.
  * {@code proGb}는 ARTPROM.PRO_GB 검증용(08·09)이며 ARTAPMM 테이블 컬럼은 아니다.

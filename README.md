@@ -134,12 +134,12 @@ aramiv3/
 
 1. MySQL 서버에 데이터베이스 생성:
 ```sql
-CREATE DATABASE aramiv3 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE water CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-2. `application.properties` 파일에서 데이터베이스 정보 수정:
+2. `application-dev.properties`(또는 프로파일별 properties / 운영 시 `GLOBALS_MYSQL_URL` 등)에서 데이터베이스 정보 수정:
 ```properties
-Globals.mysql.Url = jdbc:mysql://YOUR_HOST:3306/aramiv3?autoReconnect=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&allowMultiQueries=true
+Globals.mysql.Url = jdbc:mysql://YOUR_HOST:3306/water?autoReconnect=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul&allowMultiQueries=true
 Globals.mysql.UserName = YOUR_USERNAME
 Globals.mysql.Password = YOUR_PASSWORD
 ```
