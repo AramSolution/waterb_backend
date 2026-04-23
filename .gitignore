@@ -19,7 +19,7 @@ bin/
 .factorypath
 
 # 로그 파일
-logs/
+# logs/
 *.log
 
 nul
@@ -35,6 +35,6 @@ neis.cer
 
 # Java/Spring build artifacts
 *.class
-*.jar
+# *.jar
 *.war
 *.ear
