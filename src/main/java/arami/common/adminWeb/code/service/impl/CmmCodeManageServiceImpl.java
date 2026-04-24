@@ -1,7 +1,10 @@
 package arami.common.adminWeb.code.service.impl;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.annotation.Resource;
 
@@ -12,6 +15,9 @@ import arami.common.adminWeb.code.service.CmmCodeManageDAO;
 import arami.common.adminWeb.code.service.CmmCodeManageService;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListByCategoryRequest;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListRequest;
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeChildResponse;
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeResponse;
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeTreeResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeListByCategoryResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeResponse;
 import arami.common.error.BusinessException;
@@ -177,6 +183,51 @@ public class CmmCodeManageServiceImpl extends EgovAbstractServiceImpl implements
 			return Collections.emptyList();
 		}
 		return list;
+	}
+
+	@Override
+	public List<BuildingUseCodeTreeResponse> getBuildingUseCodeList() {
+		List<BuildingUseCodeResponse> flat = cmmCodeManageDAO.selectBuildingUseCodeList();
+		if (flat == null || flat.isEmpty()) {
+			return Collections.emptyList();
+		}
+		return buildBuildingUseCodeTree(flat);
+	}
+
+	/**
+	 * SQL 조인 결과(중분류×소분류 행)를 중분류 단위 트리로 묶는다. 순서는 쿼리 ORDER BY(M, S)와 동일하게 유지.
+	 */
+	private static List<BuildingUseCodeTreeResponse> buildBuildingUseCodeTree(List<BuildingUseCodeResponse> flat) {
+		Map<String, BuildingUseCodeTreeResponse> byMidCode = new LinkedHashMap<>();
+		for (BuildingUseCodeResponse row : flat) {
+			String midCode = row.getMidCode() == null ? "" : row.getMidCode().trim();
+			if (midCode.isEmpty()) {
+				continue;
+			}
+			BuildingUseCodeTreeResponse parent = byMidCode.computeIfAbsent(midCode, k ->
+					BuildingUseCodeTreeResponse.builder()
+							.code(midCode)
+							.name(blankToEmpty(row.getMidName()))
+							.children(new ArrayList<>())
+							.build());
+			String subCode = row.getSubCode() == null ? "" : row.getSubCode().trim();
+			if (subCode.isEmpty()) {
+				continue;
+			}
+			parent.getChildren().add(BuildingUseCodeChildResponse.builder()
+					.code(subCode)
+					.name(blankToEmpty(row.getSubName()))
+					.build());
+		}
+		return new ArrayList<>(byMidCode.values());
+	}
+
+	private static String blankToEmpty(String s) {
+		if (s == null) {
+			return "";
+		}
+		String t = s.trim();
+		return t.isEmpty() ? "" : t;
 	}
 
 	/**

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListByCategoryRequest;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListRequest;
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeListByCategoryResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeResponse;
 
@@ -217,6 +218,13 @@ public class CmmCodeManageDAO extends EgovAbstractMapper {
 	 */
 	public List<DetailCodeListByCategoryResponse> selectLetDetailCodeListByCategory(DetailCodeListByCategoryRequest request) {
 		return selectList("CmmCodeManageDAO.selectLetDetailCodeListByCategory", request);
+	}
+
+	/**
+	 * 건축용도 코드 리스트 (WAT001 × WAT002, 바인드 파라미터 없음)
+	 */
+	public List<BuildingUseCodeResponse> selectBuildingUseCodeList() {
+		return selectList("CmmCodeManageDAO.selectBuildingUseCodeList", null);
 	}
 
 }

@@ -433,4 +433,21 @@
 		ORDER BY CODE ASC
 	</select>
 
+	<!-- 건축용도 코드 리스트 조회 (중분류, 소분류 전부, 바인드 파라미터 없음) -->
+	<select id="selectBuildingUseCodeList" resultType="BuildingUseCodeResponse">
+		SELECT
+			M.CODE AS MID_CODE,
+			M.CODE_NM AS MID_NAME,
+			S.CODE AS SUB_CODE,
+			S.CODE_NM AS SUB_NAME
+		FROM LETTCCMMNDETAILCODE M
+		LEFT JOIN LETTCCMMNDETAILCODE S
+			ON S.CODE_ID = 'WAT002'
+			AND S.CODE LIKE CONCAT(M.CODE, '%')
+		WHERE M.CODE_ID = 'WAT001'
+		  AND M.USE_AT = 'Y'
+		  AND S.USE_AT = 'Y'
+		ORDER BY M.CODE, S.CODE
+	</select>
+
 </mapper>

@@ -2,6 +2,7 @@ package arami.common.adminWeb.code.service;
 
 import java.util.List;
 
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeTreeResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeListByCategoryResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeResponse;
 
@@ -133,6 +134,11 @@ public interface CmmCodeManageService {
 	 * @param studentCode  중학교(M) / 고등학교(H) 구분, 없으면 null (해당 학년대 전용 코드 제외)
 	 */
 	List<DetailCodeListByCategoryResponse> getDetailCodeListByCategory(String codeId, String studentCode);
+
+	/**
+	 * 건축용도 코드 트리 (중분류별 code/name + 소분류 children, 요청 파라미터 없음)
+	 */
+	List<BuildingUseCodeTreeResponse> getBuildingUseCodeList();
 
 	/**
 	 * 소분류코드 중복 체크

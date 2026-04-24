@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="armbuildManageDAO">
+
+	<select id="selectArmbuildList" parameterType="ArmbuildListRequest" resultType="ArmbuildListItemResponse">
+		SELECT
+			A1.BUILD_ID AS BUILD_ID,
+			COALESCE(A1.GUBUN1, '') AS GUBUN1,
+			COALESCE(A1.GUBUN2, '') AS GUBUN2,
+			COALESCE(A1.BUILD_NM, '') AS BUILD_NM,
+			A1.DAY_VAL AS DAY_VAL,
+			COALESCE(A1.BUILD_DESC, '') AS BUILD_DESC,
+			COALESCE(A1.STTUS_CODE, '') AS STTUS_CODE,
+			COALESCE(A1.CHG_USER_ID, '') AS CHG_USER_ID,
+			COALESCE(DATE_FORMAT(A1.CRT_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CRT_DATE,
+			COALESCE(DATE_FORMAT(A1.CHG_DATE, '%Y-%m-%d %H:%i:%s'), '') AS CHG_DATE
+		FROM ARMBULD A1
+		WHERE A1.GUBUN1 = #{gubun1}
+		  AND A1.GUBUN2 = #{gubun2}
+		ORDER BY A1.BUILD_ID ASC
+	</select>
+
+	<!-- 건축물용도ID(BUILD_ID) 채번: ARTAPPM getNextReqId와 동일 방식(ARMBULD MAX 기반, BUL_ + 16자리) -->
+	<select id="getNextBuildId" resultType="string">
+		SELECT CONCAT('BUL_', LPAD(COALESCE(SUBSTRING(MAX(A1.BUILD_ID), 5, 16), 0) + 1, 16, '0')) AS BUILD_ID
+		  FROM ARMBULD A1
+	</select>
+
+	<insert id="insertArmbuild" parameterType="ArmbuildInsertRequest">
+		INSERT INTO ARMBULD (
+			BUILD_ID,
+			GUBUN1,
+			GUBUN2,
+			BUILD_NM,
+			DAY_VAL,
+			BUILD_DESC,
+			STTUS_CODE,
+			CHG_USER_ID,
+			CRT_DATE,
+			CHG_DATE
+		) VALUES (
+			#{buildId},
+			#{gubun1},
+			#{gubun2},
+			#{buildNm},
+			#{dayVal,jdbcType=DECIMAL},
+			#{buildDesc},
+			'A',
+			#{chgUserId},
+			NOW(),
+			NOW()
+		)
+	</insert>
+
+	<update id="updateArmbuildLogicalDelete" parameterType="ArmbuildDeleteParam">
+		UPDATE ARMBULD
+		   SET STTUS_CODE = 'D'
+		 WHERE BUILD_ID = #{buildId}
+	</update>
+
+</mapper>

@@ -103,7 +103,9 @@ public class EgovConfigAppMapper {
 			"arami.userWeb.mentorWork.service.dto.request," +
 			"arami.userWeb.mentorWork.service.dto.response," +
 			"arami.adminWeb.banner.service.dto.request," +
-			"arami.adminWeb.banner.service.dto.response"
+			"arami.adminWeb.banner.service.dto.response," +
+			"arami.adminWeb.armbuild.service.dto.request," +
+			"arami.adminWeb.armbuild.service.dto.response"
 		);
 
 		try {

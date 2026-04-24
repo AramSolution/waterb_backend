@@ -38,6 +38,9 @@
 		<!-- AdminWeb Banner(배너관리) DTOs -->
 		<package name="arami.adminWeb.banner.service.dto.request"/>
 		<package name="arami.adminWeb.banner.service.dto.response"/>
+		<!-- AdminWeb Armbuild(건축물용도) DTOs -->
+		<package name="arami.adminWeb.armbuild.service.dto.request"/>
+		<package name="arami.adminWeb.armbuild.service.dto.response"/>
 		<!-- AdminWeb Artedum(가맹학원 신청) DTOs -->
 		<package name="arami.adminWeb.artedum.service.dto.request"/>
 		<package name="arami.adminWeb.artedum.service.dto.response"/>

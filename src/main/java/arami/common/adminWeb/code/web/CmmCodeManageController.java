@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import arami.common.CommonService;
 import arami.common.adminWeb.code.service.CmmCodeManageService;
+import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeTreeResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeListByCategoryResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeResponse;
 import egovframework.com.cmm.service.EgovProperties;
@@ -405,6 +406,16 @@ public class CmmCodeManageController {
 
         return jsonMap;
     }
+
+	/**
+	 * 건축용도 코드 트리 (중분류 WAT001 + 소분류 WAT002를 children으로 묶음). REST API.
+	 * GET /api/cont/code/building-use-codes
+	 * - 성공: 200 + JSON 배열 [{ code, name, children: [{ code, name }, ...] }, ...]
+	 */
+	@GetMapping("/building-use-codes")
+	public ResponseEntity<List<BuildingUseCodeTreeResponse>> getBuildingUseCodeList() {
+		return ResponseEntity.ok(cmmCodeManageService.getBuildingUseCodeList());
+	}
 
 	/**
 	 * 소분류코드 리스트 조회 (USE_AT='Y', codeId 기준). REST API.
