@@ -25,6 +25,20 @@ public class ArmbuildManageDAO extends EgovAbstractMapper {
 		return insert("armbuildManageDAO.insertArmbuild", request);
 	}
 
+	public int countArmbuildActiveByBuildId(ArmbuildDeleteParam param) {
+		Integer n = selectOne("armbuildManageDAO.countArmbuildActiveByBuildId", param);
+		return n != null ? n : 0;
+	}
+
+	public int countArmbuildByBuildId(ArmbuildDeleteParam param) {
+		Integer n = selectOne("armbuildManageDAO.countArmbuildByBuildId", param);
+		return n != null ? n : 0;
+	}
+
+	public int updateArmbuild(ArmbuildInsertRequest request) {
+		return update("armbuildManageDAO.updateArmbuild", request);
+	}
+
 	public int updateArmbuildLogicalDelete(ArmbuildDeleteParam param) {
 		return update("armbuildManageDAO.updateArmbuildLogicalDelete", param);
 	}

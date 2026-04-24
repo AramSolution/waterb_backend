@@ -2,9 +2,9 @@ package arami.adminWeb.armbuild.service;
 
 import java.util.List;
 
-import arami.adminWeb.armbuild.service.dto.request.ArmbuildInsertRequest;
+import arami.adminWeb.armbuild.service.dto.request.ArmbuildInsertBatchRequest;
 import arami.adminWeb.armbuild.service.dto.request.ArmbuildListRequest;
-import arami.adminWeb.armbuild.service.dto.response.ArmbuildInsertResponse;
+import arami.adminWeb.armbuild.service.dto.response.ArmbuildInsertBatchResponse;
 import arami.adminWeb.armbuild.service.dto.response.ArmbuildListItemResponse;
 import arami.adminWeb.armbuild.service.dto.response.ArmbuildResultResponse;
 
@@ -18,7 +18,7 @@ public interface ArmbuildManageService {
 	/**
 	 * 건축물용도 등록 (STTUS_CODE='A', CRT_DATE/CHG_DATE=NOW())
 	 */
-	ArmbuildInsertResponse insertArmbuild(ArmbuildInsertRequest request);
+	ArmbuildInsertBatchResponse saveArmbuildBatch(ArmbuildInsertBatchRequest request);
 
 	/**
 	 * 건축물용도 논리 삭제 (BUILD_ID 기준 STTUS_CODE = 'D')

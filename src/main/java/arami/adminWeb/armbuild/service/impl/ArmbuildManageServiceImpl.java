@@ -1,5 +1,6 @@
 package arami.adminWeb.armbuild.service.impl;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -16,9 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import arami.adminWeb.armbuild.service.ArmbuildManageDAO;
 import arami.adminWeb.armbuild.service.ArmbuildManageService;
 import arami.adminWeb.armbuild.service.dto.request.ArmbuildDeleteParam;
+import arami.adminWeb.armbuild.service.dto.request.ArmbuildInsertBatchRequest;
 import arami.adminWeb.armbuild.service.dto.request.ArmbuildInsertRequest;
 import arami.adminWeb.armbuild.service.dto.request.ArmbuildListRequest;
-import arami.adminWeb.armbuild.service.dto.response.ArmbuildInsertResponse;
+import arami.adminWeb.armbuild.service.dto.response.ArmbuildInsertBatchResponse;
 import arami.adminWeb.armbuild.service.dto.response.ArmbuildListItemResponse;
 import arami.adminWeb.armbuild.service.dto.response.ArmbuildResultResponse;
 import egovframework.com.cmm.LoginVO;
@@ -45,21 +47,46 @@ public class ArmbuildManageServiceImpl extends EgovAbstractServiceImpl implement
 
 	@Override
 	@Transactional
-	public ArmbuildInsertResponse insertArmbuild(ArmbuildInsertRequest request) {
-		request.setBuildId(armbuildManageDAO.getNextBuildId());
+	public ArmbuildInsertBatchResponse saveArmbuildBatch(ArmbuildInsertBatchRequest batch) {
+		String chgUserId = resolveChgUserId();
+		List<String> buildIds = new ArrayList<>();
+		for (ArmbuildInsertRequest request : batch.getItems()) {
+			applyTrimmedFields(request);
+			request.setChgUserId(chgUserId);
+			String bid = request.getBuildId() != null ? request.getBuildId().trim() : "";
+			if (!bid.isEmpty()) {
+				ArmbuildDeleteParam idParam = new ArmbuildDeleteParam(bid);
+				if (armbuildManageDAO.countArmbuildActiveByBuildId(idParam) == 0) {
+					throw new IllegalArgumentException("건축물용도 수정에 실패했습니다.(BUILD_ID NotFind) BUILD_ID=" + bid);
+				}
+				int updated = armbuildManageDAO.updateArmbuild(request);
+				if (updated == 0) {
+					throw new IllegalStateException("건축물용도 수정에 실패했습니다. BUILD_ID=" + bid);
+				}
+				buildIds.add(bid);
+			} else {
+				request.setBuildId(armbuildManageDAO.getNextBuildId());
+				armbuildManageDAO.insertArmbuild(request);
+				buildIds.add(request.getBuildId());
+			}
+		}
+		ArmbuildInsertBatchResponse response = new ArmbuildInsertBatchResponse();
+		response.setResult("00");
+		response.setMessage(egovMessageSource.getMessage("success.common.process"));
+		response.setBuildIds(buildIds);
+		return response;
+	}
+
+	private static void applyTrimmedFields(ArmbuildInsertRequest request) {
+		if (request.getBuildId() != null) {
+			request.setBuildId(request.getBuildId().trim());
+		}
 		request.setGubun1(request.getGubun1().trim());
 		request.setGubun2(request.getGubun2().trim());
 		request.setBuildNm(request.getBuildNm().trim());
 		if (request.getBuildDesc() != null) {
 			request.setBuildDesc(request.getBuildDesc().trim());
 		}
-		request.setChgUserId(resolveChgUserId());
-		armbuildManageDAO.insertArmbuild(request);
-		ArmbuildInsertResponse response = new ArmbuildInsertResponse();
-		response.setResult("00");
-		response.setMessage(egovMessageSource.getMessage("success.common.insert"));
-		response.setBuildId(request.getBuildId());
-		return response;
 	}
 
 	@Override

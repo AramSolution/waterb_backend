@@ -9,15 +9,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 건축물용도 등록 요청 (JSON Body).
- * BUILD_ID는 서비스에서 DB 채번(getNextBuildId)으로 설정한다.
- * CHG_USER_ID는 서비스에서 로그인 사용자로 설정하며 클라이언트 값은 무시한다.
+ * 건축물용도 등록·수정 요청 (일괄 저장 시 items 원소).
+ * buildId가 비어 있으면 신규 INSERT(서버 채번), 값이 있으면 기존 건 UPDATE(STTUS_CODE='A'인 행만).
+ * CHG_USER_ID는 서비스에서 로그인 사용자로 설정한다.
  */
 @Getter
 @Setter
 public class ArmbuildInsertRequest {
 
-	/** MyBatis/서비스 전용: INSERT 시 BUILD_ID (클라이언트 미전송) */
+	@Size(max = 20)
 	private String buildId;
 
 	@NotBlank
