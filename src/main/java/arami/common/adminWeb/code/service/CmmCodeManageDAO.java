@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListByCategoryRequest;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListRequest;
+import arami.common.adminWeb.code.service.dto.request.BuildingUseCodeUnitPriceRequest;
 import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeListByCategoryResponse;
 import arami.common.adminWeb.code.service.dto.response.DetailCodeResponse;
@@ -225,6 +226,13 @@ public class CmmCodeManageDAO extends EgovAbstractMapper {
 	 */
 	public List<BuildingUseCodeResponse> selectBuildingUseCodeList() {
 		return selectList("CmmCodeManageDAO.selectBuildingUseCodeList", null);
+	}
+
+	/**
+	 * 건축용도 코드 구분별 기준단가 조회
+	 */
+	public List<DetailCodeResponse> selectBuildingUseCodeUnitPrice(BuildingUseCodeUnitPriceRequest request) {
+		return selectList("CmmCodeManageDAO.selectBuildingUseCodeUnitPrice", request);
 	}
 
 }

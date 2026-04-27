@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import arami.common.adminWeb.code.service.CmmCodeManageDAO;
 import arami.common.adminWeb.code.service.CmmCodeManageService;
+import arami.common.adminWeb.code.service.dto.request.BuildingUseCodeUnitPriceRequest;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListByCategoryRequest;
 import arami.common.adminWeb.code.service.dto.request.DetailCodeListRequest;
 import arami.common.adminWeb.code.service.dto.response.BuildingUseCodeChildResponse;
@@ -192,6 +193,16 @@ public class CmmCodeManageServiceImpl extends EgovAbstractServiceImpl implements
 			return Collections.emptyList();
 		}
 		return buildBuildingUseCodeTree(flat);
+	}
+
+	@Override
+	public List<DetailCodeResponse> getBuildingUseCodeUnitPrice(Boolean isOtherAct) {
+		BuildingUseCodeUnitPriceRequest request = new BuildingUseCodeUnitPriceRequest(Boolean.TRUE.equals(isOtherAct));
+		List<DetailCodeResponse> list = cmmCodeManageDAO.selectBuildingUseCodeUnitPrice(request);
+		if (list == null || list.isEmpty()) {
+			return Collections.emptyList();
+		}
+		return list;
 	}
 
 	/**

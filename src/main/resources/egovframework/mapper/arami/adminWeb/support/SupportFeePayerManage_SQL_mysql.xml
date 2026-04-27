@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="supportFeePayerManageDAO">
+
+    <select id="selectFeePayerBasicDetailByItemId" parameterType="string" resultType="SupportFeePayerDetailDataResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A1.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A1.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A1.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A1.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(DECRYPT(A1.USR_TELNO), '') AS usrTelno
+          FROM ARTITEM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <select id="selectFeePayerDetailListByItemId" parameterType="string" resultType="SupportFeePayerDetailItemResponse">
+        SELECT A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               COALESCE(A1.TYPE_1, '') AS type1,
+               COALESCE(A1.TYPE_2, '') AS type2,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(A1.BASE_COST, 0) AS baseCost,
+               COALESCE(A1.WATER_SUM, 0) AS waterSum,
+               COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               COALESCE(A1.WATER_COST, 0) AS waterCost,
+               COALESCE(A1.WATER_PAY, 0) AS waterPay
+          FROM ARTITED A1
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC
+    </select>
+
+    <select id="selectFeePayerCalculationListByItemId" parameterType="string" resultType="SupportFeePayerDetailCalculationResponse">
+        SELECT A1.SEQ AS seq,
+               A1.SEQ2 AS seq2,
+               COALESCE(A1.FLOOR, 0) AS floor,
+               COALESCE(A1.BUILD_ID, '') AS buildId,
+               COALESCE(A1.ROOM_CNT, 0) AS roomCnt,
+               COALESCE(A1.HOME_CNT, 0) AS homeCnt,
+               COALESCE(A1.BUILD_SIZE, 0) AS buildSize,
+               COALESCE(A1.DAY_VAL, 0) AS dayVal,
+               COALESCE(A1.COST_YN, '') AS costYn,
+               COALESCE(A1.WATER_VOL, 0) AS waterVol
+          FROM ARTITEC A1
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC, A1.SEQ2 ASC
+    </select>
+
+    <select id="selectFeePayerList" parameterType="SupportFeePayerListRequest" resultType="SupportFeePayerListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.WATER_SUM, 0) AS waterSum,
+               COALESCE(A1.WATER_COST, 0) AS waterCost,
+               COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTITEP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTITEP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTITED A1
+          JOIN ARTITEM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <if test="reqDateFrom != null and reqDateFrom != ''">
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(#{reqDateFrom}, '%Y-%m-%d')
+        </if>
+        <if test="reqDateTo != null and reqDateTo != ''">
+           AND A1.REQ_DATE &lt;= STR_TO_DATE(#{reqDateTo}, '%Y-%m-%d')
+        </if>
+        <if test="userNm != null and userNm != ''">
+           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{userNm}, '%')
+        </if>
+        <if test="address != null and address != ''">
+           AND (
+                   DECRYPT(A2.ZIP) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES_LOT) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.DETAIL_ADRES) LIKE CONCAT('%', #{address}, '%')
+           )
+        </if>
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+    </select>
+
+    <select id="getNextItemId" resultType="string">
+        SELECT CONCAT('ITM_', LPAD(COALESCE(SUBSTRING(MAX(A1.ITEM_ID), 5, 16), 0) + 1, 16, '0')) AS ITEM_ID
+          FROM ARTITEM A1
+    </select>
+
+    <insert id="insertArtitem" parameterType="SupportFeePayerArtitemInsertRequest">
+        INSERT INTO ARTITEM (
+            ITEM_ID,
+            USER_NM,
+            ZIP,
+            ADRES_LOT,
+            ADRES,
+            DETAIL_ADRES,
+            USR_TELNO,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            ENCRYPT(#{userNm}),
+            ENCRYPT(#{zip}),
+            ENCRYPT(#{adresLot}),
+            ENCRYPT(#{adres}),
+            ENCRYPT(#{detailAdres}),
+            ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <select id="countArtitemByItemId" parameterType="string" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTITEM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <update id="updateArtitemBasic" parameterType="SupportFeePayerArtitemInsertRequest">
+        UPDATE ARTITEM
+           SET USER_NM = ENCRYPT(#{userNm}),
+               ZIP = ENCRYPT(#{zip}),
+               ADRES_LOT = ENCRYPT(#{adresLot}),
+               ADRES = ENCRYPT(#{adres}),
+               DETAIL_ADRES = ENCRYPT(#{detailAdres}),
+               USR_TELNO = ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+    </update>
+
+    <select id="getNextArtitedSeq" parameterType="string" resultType="int">
+        SELECT COALESCE(MAX(A1.SEQ), 0) + 1
+          FROM ARTITED A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <select id="selectArtitedSeqsByItemId" parameterType="string" resultType="int">
+        SELECT A1.SEQ
+          FROM ARTITED A1
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC
+    </select>
+
+    <select id="countUnpaidArtitedByItemId" parameterType="string" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTITED A1
+         WHERE A1.ITEM_ID = #{_parameter}
+           AND A1.PAY_STA = '01'
+    </select>
+
+    <insert id="insertArtited" parameterType="SupportFeePayerArtitedInsertRequest">
+        INSERT INTO ARTITED (
+            ITEM_ID,
+            SEQ,
+            PAY_STA,
+            TYPE_1,
+            TYPE_2,
+            REQ_DATE,
+            BASE_COST,
+            WATER_SUM,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{paySta},
+            #{type1},
+            #{type2},
+            #{reqDate},
+            #{baseCost},
+            #{waterSum},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <!-- PK(ITEM_ID, SEQ) 충돌 시 헤더 컬럼만 갱신. WATER_COST/WATER_VAL 등은 이후 f_cost 로 반영 -->
+    <insert id="upsertArtited" parameterType="SupportFeePayerArtitedInsertRequest">
+        INSERT INTO ARTITED (
+            ITEM_ID,
+            SEQ,
+            PAY_STA,
+            TYPE_1,
+            TYPE_2,
+            REQ_DATE,
+            BASE_COST,
+            WATER_SUM,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{paySta},
+            #{type1},
+            #{type2},
+            #{reqDate},
+            #{baseCost},
+            #{waterSum},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            PAY_STA = VALUES(PAY_STA),
+            TYPE_1 = VALUES(TYPE_1),
+            TYPE_2 = VALUES(TYPE_2),
+            REQ_DATE = VALUES(REQ_DATE),
+            BASE_COST = VALUES(BASE_COST),
+            WATER_SUM = VALUES(WATER_SUM),
+            CHG_USER_ID = VALUES(CHG_USER_ID),
+            CHG_DATE = NOW()
+    </insert>
+
+    <delete id="deleteArtitecByItemIdAndSeq">
+        DELETE FROM ARTITEC
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </delete>
+
+    <select id="getNextArtitecSeq2" resultType="int">
+        SELECT COALESCE(MAX(A1.SEQ2), 0) + 1
+          FROM ARTITEC A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+    </select>
+
+    <select id="selectArtitecSeq2sByItemIdAndSeq" resultType="int">
+        SELECT A1.SEQ2
+          FROM ARTITEC A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+         ORDER BY A1.SEQ2 ASC
+    </select>
+
+    <update id="updateArtitec" parameterType="SupportFeePayerArtitecInsertRequest">
+        UPDATE ARTITEC
+           SET FLOOR = #{floor},
+               BUILD_ID = #{buildId},
+               ROOM_CNT = #{roomCnt},
+               HOME_CNT = #{homeCnt},
+               BUILD_SIZE = #{buildSize},
+               DAY_VAL = #{dayVal},
+               COST_YN = #{costYn},
+               WATER_VOL = #{waterVol},
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </update>
+
+    <delete id="deleteArtitecByItemIdAndSeqAndSeq2">
+        DELETE FROM ARTITEC
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </delete>
+
+    <delete id="deleteArtitedByItemIdAndSeq">
+        DELETE FROM ARTITED
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </delete>
+
+    <select id="callCostProc" parameterType="SupportFeePayerCostCalcRequest" resultType="string">
+        SELECT f_cost(#{fixedGubun}, #{itemId}, #{seq}) AS COST_RESULT
+    </select>
+
+    <update id="updateArtitedCost" parameterType="SupportFeePayerArtitedCostUpdateRequest">
+        UPDATE ARTITED
+           SET WATER_COST = #{waterCost},
+               WATER_VAL = #{waterVal},
+               WATER_SUM = (
+                   SELECT COALESCE(SUM(COALESCE(T1.WATER_VOL, 0)), 0)
+                     FROM ARTITEC T1
+                    WHERE T1.ITEM_ID = #{itemId}
+                      AND T1.SEQ = #{seq}
+               ),
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </update>
+
+    <select id="selectArtitecWaterSum" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(COALESCE(T1.WATER_VOL, 0)), 0)
+          FROM ARTITEC T1
+         WHERE T1.ITEM_ID = #{itemId}
+           AND T1.SEQ = #{seq}
+    </select>
+
+    <insert id="insertArtitec" parameterType="SupportFeePayerArtitecInsertRequest">
+        INSERT INTO ARTITEC (
+            ITEM_ID,
+            SEQ,
+            SEQ2,
+            FLOOR,
+            BUILD_ID,
+            ROOM_CNT,
+            HOME_CNT,
+            BUILD_SIZE,
+            DAY_VAL,
+            COST_YN,
+            WATER_VOL,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{seq2},
+            #{floor},
+            #{buildId},
+            #{roomCnt},
+            #{homeCnt},
+            #{buildSize},
+            #{dayVal},
+            #{costYn},
+            #{waterVol},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,471 @@
+package arami.adminWeb.support.service.impl;
+
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
+import jakarta.annotation.Resource;
+
+import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import arami.adminWeb.support.service.SupportFeePayerManageDAO;
+import arami.adminWeb.support.service.SupportFeePayerManageService;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitemInsertRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitecInsertRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpdateRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerCalcRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerCostCalcRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerDetailRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculationResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
+import egovframework.com.cmm.EgovMessageSource;
+import egovframework.com.cmm.LoginVO;
+
+@Service("supportFeePayerManageService")
+public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl implements SupportFeePayerManageService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+
+    @Resource(name = "supportFeePayerManageDAO")
+    private SupportFeePayerManageDAO supportFeePayerManageDAO;
+
+    @Resource(name = "egovMessageSource")
+    private EgovMessageSource egovMessageSource;
+
+    @Override
+    @Transactional
+    public SupportFeePayerRegisterResponse register(SupportFeePayerRegisterRequest request) {
+        SaveResult saveResult = saveFeePayer(request, true);
+        String message = saveResult.isNewItem()
+                ? egovMessageSource.getMessage("success.common.insert")
+                : egovMessageSource.getMessage("success.common.update");
+        return new SupportFeePayerRegisterResponse("00", message, saveResult.itemId());
+    }
+
+    @Override
+    @Transactional
+    public SupportFeePayerCalculateResponse calculateCost(SupportFeePayerRegisterRequest request) {
+        SaveResult saveResult = saveFeePayer(request, false);
+        if (saveResult.targetSeqForCalculate() == null || saveResult.targetSeqForCalculate() <= 0) {
+            throw new IllegalArgumentException("계산 대상 detail이 없습니다. (I/U rowStatus 필요)");
+        }
+        String chgUserId = resolveChgUserId();
+        CostValues values = calculateAndUpdateCost(saveResult.itemId(), saveResult.targetSeqForCalculate(), chgUserId);
+        return new SupportFeePayerCalculateResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.select"),
+                saveResult.itemId(),
+                saveResult.targetSeqForCalculate(),
+                values.waterCost(),
+                values.waterVal(),
+                values.waterSum());
+    }
+
+    private SaveResult saveFeePayer(SupportFeePayerRegisterRequest request, boolean runCostCalculationOnSave) {
+        String chgUserId = resolveChgUserId();
+        String itemId;
+        boolean isNewItem = trimToEmpty(request.getItemId()).isEmpty();
+
+        if (isNewItem) {
+            itemId = supportFeePayerManageDAO.getNextItemId();
+            if (itemId == null || itemId.isBlank()) {
+                throw new IllegalStateException("ITEM_ID 채번에 실패했습니다.");
+            }
+            SupportFeePayerArtitemInsertRequest basic = buildBasicInfo(itemId, chgUserId, request);
+            supportFeePayerManageDAO.insertArtitem(basic);
+        } else {
+            itemId = trimToEmpty(request.getItemId());
+            if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
+                throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+            }
+            SupportFeePayerArtitemInsertRequest basic = buildBasicInfoRow(itemId, chgUserId, request.getBasicInfo());
+            int updated = supportFeePayerManageDAO.updateArtitemBasic(basic);
+            if (updated <= 0) {
+                throw new IllegalStateException("기본정보 수정에 실패했습니다.");
+            }
+        }
+
+        List<SupportFeePayerDetailRequest> details = request.getDetails();
+        validateExplicitSeqUnique(details);
+
+        List<Integer> existingSeqs = isNewItem
+                ? List.of()
+                : supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId);
+        Set<Integer> existingSeqSet = new HashSet<>(existingSeqs);
+        Integer targetSeqForCalculate = null;
+
+        Integer nextSeqHint = supportFeePayerManageDAO.getNextArtitedSeq(itemId);
+        int nextNewSeq = nextSeqHint != null ? nextSeqHint : 1;
+
+        for (SupportFeePayerDetailRequest detail : details) {
+            String rowStatus = resolveRowStatus(detail);
+            Integer requestSeq = detail.getSeq();
+
+            if ("D".equals(rowStatus)) {
+                if (isNewItem) {
+                    throw new IllegalArgumentException("신규 등록에서는 detail 삭제(D)를 사용할 수 없습니다.");
+                }
+                validateExistingSeq(requestSeq, existingSeqSet, "삭제");
+                deleteDetailBlock(itemId, requestSeq);
+                existingSeqSet.remove(requestSeq);
+                continue;
+            }
+
+            if ("U".equals(rowStatus)) {
+                if (isNewItem) {
+                    throw new IllegalArgumentException("신규 등록에서는 detail 수정(U)을 사용할 수 없습니다.");
+                }
+                validateExistingSeq(requestSeq, existingSeqSet, "수정");
+                upsertDetailBlock(itemId, chgUserId, detail, requestSeq, runCostCalculationOnSave);
+                targetSeqForCalculate = requestSeq;
+                continue;
+            }
+
+            if ("I".equals(rowStatus)) {
+                if (requestSeq != null && requestSeq > 0) {
+                    throw new IllegalArgumentException("신규 detail(I)에는 seq를 지정할 수 없습니다.");
+                }
+                if (!isNewItem && supportFeePayerManageDAO.countUnpaidArtitedByItemId(itemId) > 0) {
+                    throw new IllegalArgumentException(
+                            "미납건이 존재하여 추가 등록을 할 수 없습니다. 모든 건을 완납처리 후 진행해주세요.");
+                }
+                int seq = nextNewSeq++;
+                upsertDetailBlock(itemId, chgUserId, detail, seq, runCostCalculationOnSave);
+                existingSeqSet.add(seq);
+                targetSeqForCalculate = seq;
+                continue;
+            }
+
+            throw new IllegalArgumentException("detail.rowStatus 값이 올바르지 않습니다. (I/U/D)");
+        }
+        return new SaveResult(itemId, isNewItem, targetSeqForCalculate);
+    }
+
+    @Override
+    @Transactional
+    public SupportFeePayerBasicUpdateResponse updateBasic(String itemId, SupportFeePayerBasicInfoRequest request) {
+        String id = trimToEmpty(itemId);
+        if (id.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+        if (supportFeePayerManageDAO.countArtitemByItemId(id) <= 0) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+        String chgUserId = resolveChgUserId();
+        SupportFeePayerArtitemInsertRequest row = buildBasicInfoRow(id, chgUserId, request);
+        int updated = supportFeePayerManageDAO.updateArtitemBasic(row);
+        if (updated <= 0) {
+            throw new IllegalStateException("기본정보 수정에 실패했습니다.");
+        }
+        return new SupportFeePayerBasicUpdateResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.update"),
+                id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request) {
+        return supportFeePayerManageDAO.selectFeePayerList(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupportFeePayerDetailDataResponse selectFeePayerDetail(String itemId) {
+        String id = trimToEmpty(itemId);
+        if (id.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+        SupportFeePayerDetailDataResponse basic = supportFeePayerManageDAO.selectFeePayerBasicDetailByItemId(id);
+        if (basic == null) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+
+        List<SupportFeePayerDetailItemResponse> details = supportFeePayerManageDAO.selectFeePayerDetailListByItemId(id);
+        List<SupportFeePayerDetailCalculationResponse> calculations = supportFeePayerManageDAO
+                .selectFeePayerCalculationListByItemId(id);
+
+        Map<Integer, List<SupportFeePayerDetailCalculationResponse>> calcBySeq = new HashMap<>();
+        for (SupportFeePayerDetailCalculationResponse calc : calculations) {
+            Integer seq = calc.getSeq();
+            if (seq == null) {
+                continue;
+            }
+            calcBySeq.computeIfAbsent(seq, k -> new ArrayList<>()).add(calc);
+        }
+
+        for (SupportFeePayerDetailItemResponse detail : details) {
+            List<SupportFeePayerDetailCalculationResponse> rows = calcBySeq.get(detail.getSeq());
+            detail.setCalculations(rows != null ? rows : new ArrayList<>());
+        }
+
+        basic.setDetails(details);
+        return basic;
+    }
+
+    private SupportFeePayerArtitemInsertRequest buildBasicInfo(
+            String itemId,
+            String chgUserId,
+            SupportFeePayerRegisterRequest request) {
+        return buildBasicInfoRow(itemId, chgUserId, request.getBasicInfo());
+    }
+
+    private SupportFeePayerArtitemInsertRequest buildBasicInfoRow(
+            String itemId,
+            String chgUserId,
+            SupportFeePayerBasicInfoRequest basicInfo) {
+        SupportFeePayerArtitemInsertRequest basic = new SupportFeePayerArtitemInsertRequest();
+        basic.setItemId(itemId);
+        basic.setUserNm(trimToEmpty(basicInfo.getUserNm()));
+        basic.setZip(trimToEmpty(basicInfo.getZip()));
+        basic.setAdresLot(trimToEmpty(basicInfo.getAdresLot()));
+        basic.setAdres(trimToEmpty(basicInfo.getAdres()));
+        basic.setDetailAdres(trimToEmpty(basicInfo.getDetailAdres()));
+        basic.setUsrTelno(trimToEmpty(basicInfo.getUsrTelno()));
+        basic.setChgUserId(chgUserId);
+        return basic;
+    }
+
+    private static void validateExplicitSeqUnique(List<SupportFeePayerDetailRequest> details) {
+        Set<Integer> seen = new HashSet<>();
+        for (SupportFeePayerDetailRequest d : details) {
+            if (d.getSeq() != null && d.getSeq() > 0) {
+                if (!seen.add(d.getSeq())) {
+                    throw new IllegalArgumentException("요청에 중복된 SEQ가 있습니다.");
+                }
+            }
+        }
+    }
+
+    private static String resolveRowStatus(SupportFeePayerDetailRequest detail) {
+        String status = trimToNull(detail.getRowStatus());
+        if (status == null) {
+            return detail.getSeq() != null && detail.getSeq() > 0 ? "U" : "I";
+        }
+        return status.toUpperCase();
+    }
+
+    private static void validateExistingSeq(Integer seq, Set<Integer> existingSeqSet, String actionName) {
+        if (seq == null || seq <= 0) {
+            throw new IllegalArgumentException(actionName + " 대상 detail.seq는 필수입니다.");
+        }
+        if (!existingSeqSet.contains(seq)) {
+            throw new IllegalArgumentException(actionName + " 대상 SEQ가 존재하지 않습니다. seq=" + seq);
+        }
+    }
+
+    /**
+     * ARTITED: INSERT … ON DUPLICATE KEY UPDATE.
+     * ARTITEC: 동일 (ITEM_ID, SEQ) 산정목록을 삭제 후 요청 배열 순서대로 SEQ2=1..n 재등록.
+     */
+    private void upsertDetailBlock(
+            String itemId,
+            String chgUserId,
+            SupportFeePayerDetailRequest detail,
+            int seq,
+            boolean runCostCalculation) {
+        SupportFeePayerArtitedInsertRequest d = new SupportFeePayerArtitedInsertRequest();
+        d.setItemId(itemId);
+        d.setSeq(seq);
+        d.setPaySta(trimToNull(detail.getPaySta()));
+        d.setType1(trimToNull(detail.getType1()));
+        d.setType2(trimToNull(detail.getType2()));
+        d.setReqDate(parseDate(detail.getReqDate()));
+        d.setBaseCost(zeroIfNull(detail.getBaseCost()));
+        d.setWaterSum(detail.getWaterSum());
+        d.setChgUserId(chgUserId);
+        supportFeePayerManageDAO.upsertArtited(d);
+
+        List<Integer> existingSeq2s = supportFeePayerManageDAO.selectArtitecSeq2sByItemIdAndSeq(itemId, seq);
+        Set<Integer> existingSeq2Set = new HashSet<>(existingSeq2s);
+        Integer nextSeq2Hint = supportFeePayerManageDAO.getNextArtitecSeq2(itemId, seq);
+        int nextSeq2 = nextSeq2Hint != null ? nextSeq2Hint : 1;
+
+        for (SupportFeePayerCalcRequest calc : detail.getCalculations()) {
+            String calcRowStatus = resolveCalcRowStatus(calc);
+            Integer requestSeq2 = calc.getSeq2();
+
+            if ("D".equals(calcRowStatus)) {
+                validateExistingSeq2(requestSeq2, existingSeq2Set, "삭제");
+                supportFeePayerManageDAO.deleteArtitecByItemIdAndSeqAndSeq2(itemId, seq, requestSeq2);
+                existingSeq2Set.remove(requestSeq2);
+                continue;
+            }
+
+            SupportFeePayerArtitecInsertRequest c = new SupportFeePayerArtitecInsertRequest();
+            c.setItemId(itemId);
+            c.setSeq(seq);
+            c.setFloor(zeroIfNull(calc.getFloor()));
+            c.setBuildId(trimToNull(calc.getBuildId()));
+            c.setRoomCnt(zeroIfNull(calc.getRoomCnt()));
+            c.setHomeCnt(zeroIfNull(calc.getHomeCnt()));
+            c.setBuildSize(calc.getBuildSize());
+            c.setDayVal(calc.getDayVal());
+            c.setCostYn(trimToNull(calc.getCostYn()));
+            c.setWaterVol(calc.getWaterVol());
+            c.setChgUserId(chgUserId);
+
+            if ("U".equals(calcRowStatus)) {
+                validateExistingSeq2(requestSeq2, existingSeq2Set, "수정");
+                c.setSeq2(requestSeq2);
+                int updated = supportFeePayerManageDAO.updateArtitec(c);
+                if (updated <= 0) {
+                    throw new IllegalStateException("산정 상세 수정에 실패했습니다. seq2=" + requestSeq2);
+                }
+                continue;
+            }
+
+            if ("I".equals(calcRowStatus)) {
+                if (requestSeq2 != null && requestSeq2 > 0) {
+                    throw new IllegalArgumentException("신규 계산행(I)에는 seq2를 지정할 수 없습니다.");
+                }
+                c.setSeq2(nextSeq2++);
+                supportFeePayerManageDAO.insertArtitec(c);
+                continue;
+            }
+
+            throw new IllegalArgumentException("calculation.rowStatus 값이 올바르지 않습니다. (I/U/D)");
+        }
+
+        if (runCostCalculation) {
+            calculateAndUpdateCost(itemId, seq, chgUserId);
+        }
+    }
+
+    /**
+     * 삭제는 명시 요청된 SEQ만 수행한다.
+     * 동시수정 상황에서 "요청에 없는 SEQ 전체 삭제"를 피하기 위해 단건 삭제 방식으로 처리.
+     */
+    private void deleteDetailBlock(String itemId, int seq) {
+        supportFeePayerManageDAO.deleteArtitecByItemIdAndSeq(itemId, seq);
+        supportFeePayerManageDAO.deleteArtitedByItemIdAndSeq(itemId, seq);
+    }
+
+    private static String resolveCalcRowStatus(SupportFeePayerCalcRequest calc) {
+        String status = trimToNull(calc.getRowStatus());
+        if (status == null) {
+            return calc.getSeq2() != null && calc.getSeq2() > 0 ? "U" : "I";
+        }
+        return status.toUpperCase();
+    }
+
+    private static void validateExistingSeq2(Integer seq2, Set<Integer> existingSeq2Set, String actionName) {
+        if (seq2 == null || seq2 <= 0) {
+            throw new IllegalArgumentException(actionName + " 대상 calculation.seq2는 필수입니다.");
+        }
+        if (!existingSeq2Set.contains(seq2)) {
+            throw new IllegalArgumentException(actionName + " 대상 계산행 SEQ2가 존재하지 않습니다. seq2=" + seq2);
+        }
+    }
+
+    /**
+     * f_cost('01', ITEM_ID, SEQ) 결과(원인자부담금|오수부가량)를 받아 ARTITED.WATER_COST/WATER_VAL 갱신.
+     * 등록 직후, 그리고 이후 '계산' 버튼 API에서도 재사용 가능한 단위 함수.
+     */
+    private CostValues calculateAndUpdateCost(String itemId, int seq, String chgUserId) {
+        SupportFeePayerCostCalcRequest procParam = new SupportFeePayerCostCalcRequest("01", itemId, seq);
+        String procResult = supportFeePayerManageDAO.callCostProc(procParam);
+        if (procResult == null || procResult.isBlank()) {
+            throw new IllegalStateException("f_cost 응답이 비어 있습니다.");
+        }
+
+        String[] parts = procResult.split("\\|", -1);
+        if (parts.length < 2) {
+            throw new IllegalStateException("f_cost 응답 형식이 올바르지 않습니다. result=" + procResult);
+        }
+
+        Integer waterCost = parseInteger(parts[0]);
+        BigDecimal waterVal = parseBigDecimal(parts[1]);
+
+        SupportFeePayerArtitedCostUpdateRequest updateParam = new SupportFeePayerArtitedCostUpdateRequest();
+        updateParam.setItemId(itemId);
+        updateParam.setSeq(seq);
+        updateParam.setWaterCost(waterCost);
+        updateParam.setWaterVal(waterVal);
+        updateParam.setChgUserId(chgUserId);
+        supportFeePayerManageDAO.updateArtitedCost(updateParam);
+        BigDecimal waterSum = supportFeePayerManageDAO.selectArtitecWaterSum(itemId, seq);
+        return new CostValues(waterCost, waterVal, waterSum != null ? waterSum : BigDecimal.ZERO);
+    }
+
+    private record CostValues(Integer waterCost, BigDecimal waterVal, BigDecimal waterSum) {
+    }
+
+    private record SaveResult(String itemId, boolean isNewItem, Integer targetSeqForCalculate) {
+    }
+
+    private static String resolveChgUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof LoginVO loginVO) {
+            String uniqId = loginVO.getUniqId();
+            return uniqId != null ? uniqId.trim() : "";
+        }
+        return "";
+    }
+
+    private static Integer zeroIfNull(Integer n) {
+        return n == null ? 0 : n;
+    }
+
+    private static Integer parseInteger(String raw) {
+        String v = trimToNull(raw);
+        if (v == null) {
+            return 0;
+        }
+        return Integer.parseInt(v.replace(",", ""));
+    }
+
+    private static BigDecimal parseBigDecimal(String raw) {
+        String v = trimToNull(raw);
+        if (v == null) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(v.replace(",", ""));
+    }
+
+    private static String trimToEmpty(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static String trimToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static Date parseDate(String raw) {
+        String value = trimToNull(raw);
+        if (value == null) {
+            return null;
+        }
+        try {
+            LocalDate localDate = LocalDate.parse(value, DATE_FORMATTER);
+            return Date.valueOf(localDate);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("통지일 형식이 올바르지 않습니다. (yyyy-MM-dd)");
+        }
+    }
+}

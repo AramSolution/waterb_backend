@@ -141,6 +141,11 @@ public interface CmmCodeManageService {
 	List<BuildingUseCodeTreeResponse> getBuildingUseCodeList();
 
 	/**
+	 * 건축용도 코드 구분별 기준단가 조회 (WAT003, isOtherAct 기준 코드 선택)
+	 */
+	List<DetailCodeResponse> getBuildingUseCodeUnitPrice(Boolean isOtherAct);
+
+	/**
 	 * 소분류코드 중복 체크
 	 * @param object
 	 * @return Y : 가능 N : 불가

@@ -430,7 +430,7 @@
 			OR CODE LIKE '04%'
 			</if>
 			)
-		ORDER BY CODE ASC
+		ORDER BY ORDER_BY
 	</select>
 
 	<!-- 건축용도 코드 리스트 조회 (중분류, 소분류 전부, 바인드 파라미터 없음) -->
@@ -447,7 +447,24 @@
 		WHERE M.CODE_ID = 'WAT001'
 		  AND M.USE_AT = 'Y'
 		  AND S.USE_AT = 'Y'
-		ORDER BY M.CODE, S.CODE
+		ORDER BY M.ORDER_BY, S.ORDER_BY
+	</select>
+
+	<!-- 건축용도 코드 구분 별 기준단가 조회 (REST API용: DTO 파라미터/결과) -->
+	<select id="selectBuildingUseCodeUnitPrice" parameterType="BuildingUseCodeUnitPriceRequest" resultType="DetailCodeResponse">
+		SELECT
+			CODE_ID AS codeId,
+			CODE AS code,
+			CODE_NM AS codeNm,
+			CODE_DC AS codeDc
+		FROM LETTCCMMNDETAILCODE
+		WHERE USE_AT = 'Y'
+		  AND CODE_ID = 'WAT003'
+		<choose>
+            <when test="isOtherAct == true">AND CODE = '02'</when>
+            <otherwise>AND CODE = '01'</otherwise>
+        </choose>
+		ORDER BY ORDER_BY
 	</select>
 
 </mapper>

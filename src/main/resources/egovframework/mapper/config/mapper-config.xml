@@ -65,6 +65,9 @@
 		<!-- UserWeb OAuth DTOs -->
 		<package name="arami.userWeb.oauth.service.dto.request"/>
 		<package name="arami.userWeb.oauth.service.dto.response"/>
+		<!-- AdminWeb Support(오수 원인자부담금) DTOs -->
+		<package name="arami.adminWeb.support.service.dto.request"/>
+		<package name="arami.adminWeb.support.service.dto.response"/>
 		<!-- Common Auth DTOs -->
 		<package name="arami.common.auth.service.dto"/>
 	</typeAliases>

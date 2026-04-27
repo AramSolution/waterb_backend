@@ -418,6 +418,16 @@ public class CmmCodeManageController {
 	}
 
 	/**
+	 * 건축용도 코드 구분별 기준단가 조회 (WAT003)
+	 * GET /api/cont/code/building-use-codes/unit-price?isOtherAct=true|false
+	 */
+	@GetMapping("/building-use-codes/unit-price")
+	public ResponseEntity<List<DetailCodeResponse>> getBuildingUseCodeUnitPrice(
+			@RequestParam(required = false, defaultValue = "false") Boolean isOtherAct) {
+		return ResponseEntity.ok(cmmCodeManageService.getBuildingUseCodeUnitPrice(isOtherAct));
+	}
+
+	/**
 	 * 소분류코드 리스트 조회 (USE_AT='Y', codeId 기준). REST API.
 	 * GET /api/cont/code/{codeId}/details
 	 * - 성공: 200 + List&lt;DetailCodeResponse&gt;
