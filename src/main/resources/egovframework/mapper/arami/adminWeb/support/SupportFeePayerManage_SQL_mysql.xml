@@ -35,6 +35,7 @@
                A1.SEQ2 AS seq2,
                COALESCE(A1.FLOOR, 0) AS floor,
                COALESCE(A1.BUILD_ID, '') AS buildId,
+               COALESCE(B1.BUILD_NM, '') AS buildNm,
                COALESCE(A1.ROOM_CNT, 0) AS roomCnt,
                COALESCE(A1.HOME_CNT, 0) AS homeCnt,
                COALESCE(A1.BUILD_SIZE, 0) AS buildSize,
@@ -42,10 +43,13 @@
                COALESCE(A1.COST_YN, '') AS costYn,
                COALESCE(A1.WATER_VOL, 0) AS waterVol
           FROM ARTITEC A1
+          LEFT JOIN ARMBULD B1
+            ON B1.BUILD_ID = A1.BUILD_ID
          WHERE A1.ITEM_ID = #{_parameter}
          ORDER BY A1.SEQ ASC, A1.SEQ2 ASC
     </select>
 
+    <!-- ITEM_ID 당 ARTITED SEQ 최대 1건(가장 최신 등록 분)만 목록에 포함 -->
     <select id="selectFeePayerList" parameterType="SupportFeePayerListRequest" resultType="SupportFeePayerListItemResponse">
         SELECT A1.ITEM_ID AS itemId,
                A1.SEQ AS seq,
@@ -76,6 +80,14 @@
                     LIMIT 1
                ), 0) AS pay
           FROM ARTITED A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTITED
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
           JOIN ARTITEM A2
             ON A2.ITEM_ID = A1.ITEM_ID
          WHERE 1=1
@@ -167,6 +179,14 @@
           FROM ARTITED A1
          WHERE A1.ITEM_ID = #{_parameter}
            AND A1.PAY_STA = '01'
+    </select>
+
+    <!-- 수정/삭제 가능 여부: 등록된 PAY_STA 기준 (미납 '01'만 허용). 클라이언트 값과 무관 -->
+    <select id="selectArtitedPayStaByItemIdAndSeq" resultType="string">
+        SELECT COALESCE(A1.PAY_STA, '')
+          FROM ARTITED A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
     </select>
 
     <insert id="insertArtited" parameterType="SupportFeePayerArtitedInsertRequest">

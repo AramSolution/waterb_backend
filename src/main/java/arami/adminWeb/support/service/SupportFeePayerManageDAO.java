@@ -63,6 +63,16 @@ public class SupportFeePayerManageDAO extends EgovAbstractMapper {
         return n != null ? n : 0;
     }
 
+    /**
+     * ARTITED에 저장된 납부상태 (미납 판별은 서비스에서 PAY_STA = '01' 과 비교).
+     */
+    public String selectArtitedPayStaByItemIdAndSeq(String itemId, int seq) {
+        Map<String, Object> param = new HashMap<>(2);
+        param.put("itemId", itemId);
+        param.put("seq", seq);
+        return selectOne("supportFeePayerManageDAO.selectArtitedPayStaByItemIdAndSeq", param);
+    }
+
     public int insertArtited(SupportFeePayerArtitedInsertRequest request) {
         return insert("supportFeePayerManageDAO.insertArtited", request);
     }

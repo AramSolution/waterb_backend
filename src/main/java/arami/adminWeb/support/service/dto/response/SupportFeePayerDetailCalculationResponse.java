@@ -15,6 +15,8 @@ public class SupportFeePayerDetailCalculationResponse {
     private Integer seq2;
     private Integer floor;
     private String buildId;
+    /** ARMBULD.BUILD_NM (BUILD_ID 기준) */
+    private String buildNm;
     private Integer roomCnt;
     private Integer homeCnt;
     private BigDecimal buildSize;

@@ -1,5 +1,7 @@
 package arami.adminWeb.support.web;
 
+import java.util.List;
+
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +43,8 @@ public class SupportFeePayerManageController {
 
     /**
      * 오수 원인자부담금 관리 목록 조회.
-     * - ARTITED + ARTITEM 기준 목록
-     * - 납부(ARTITEP)는 최신 1건(납부일/납부액)만 조회
+     * - ARTITED + ARTITEM 기준, ITEM_ID 당 SEQ 최대 1건(가장 최신 분)만 행으로 반환
+     * - 납부(ARTITEP)는 해당 분 기준 최신 1건(납부일/납부액)만 조회
      * - 납부 이력이 없으면 납부일 null, 납부액 0
      */
     @PostMapping(value = "/list", produces = "application/json;charset=UTF-8")
@@ -108,14 +110,14 @@ public class SupportFeePayerManageController {
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer register: {}", e.getMessage());
-            return ResponseEntity.ok(new SupportFeePayerRegisterResponse("40", e.getMessage(), null));
+            return ResponseEntity.ok(new SupportFeePayerRegisterResponse("40", e.getMessage(), null, List.of()));
         } catch (Exception e) {
             log.error("support fee-payer register error: {}", e.getMessage(), e);
             if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
                 e.printStackTrace();
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new SupportFeePayerRegisterResponse("01", "오수 원인자부담금 등록·수정 중 오류가 발생했습니다.", null));
+                    .body(new SupportFeePayerRegisterResponse("01", "오수 원인자부담금 등록·수정 중 오류가 발생했습니다.", null, List.of()));
         }
     }
 
@@ -131,7 +133,8 @@ public class SupportFeePayerManageController {
             return ResponseEntity.ok(supportFeePayerManageService.calculateCost(request));
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer calculate: {}", e.getMessage());
-            return ResponseEntity.ok(new SupportFeePayerCalculateResponse("40", e.getMessage(), null, null, null, null, null));
+            return ResponseEntity.ok(
+                    new SupportFeePayerCalculateResponse("40", e.getMessage(), null, null, null, null, null, List.of()));
         } catch (Exception e) {
             log.error("support fee-payer calculate error: {}", e.getMessage(), e);
             if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
@@ -145,7 +148,8 @@ public class SupportFeePayerManageController {
                             null,
                             null,
                             null,
-                            null));
+                            null,
+                            List.of()));
         }
     }
 

@@ -14,6 +14,8 @@ import java.time.format.DateTimeParseException;
 
 import jakarta.annotation.Resource;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,10 +40,12 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculat
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterSkippedDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
 import egovframework.com.cmm.EgovMessageSource;
 import egovframework.com.cmm.LoginVO;
 
+@Slf4j
 @Service("supportFeePayerManageService")
 public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl implements SupportFeePayerManageService {
 
@@ -60,7 +64,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         String message = saveResult.isNewItem()
                 ? egovMessageSource.getMessage("success.common.insert")
                 : egovMessageSource.getMessage("success.common.update");
-        return new SupportFeePayerRegisterResponse("00", message, saveResult.itemId());
+        return new SupportFeePayerRegisterResponse("00", message, saveResult.itemId(), saveResult.skippedDetails());
     }
 
     @Override
@@ -79,7 +83,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 saveResult.targetSeqForCalculate(),
                 values.waterCost(),
                 values.waterVal(),
-                values.waterSum());
+                values.waterSum(),
+                saveResult.skippedDetails());
     }
 
     private SaveResult saveFeePayer(SupportFeePayerRegisterRequest request, boolean runCostCalculationOnSave) {
@@ -118,6 +123,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         Integer nextSeqHint = supportFeePayerManageDAO.getNextArtitedSeq(itemId);
         int nextNewSeq = nextSeqHint != null ? nextSeqHint : 1;
 
+        List<SupportFeePayerRegisterSkippedDetailResponse> skippedDetails = new ArrayList<>();
+
         for (SupportFeePayerDetailRequest detail : details) {
             String rowStatus = resolveRowStatus(detail);
             Integer requestSeq = detail.getSeq();
@@ -127,6 +134,17 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     throw new IllegalArgumentException("신규 등록에서는 detail 삭제(D)를 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "삭제");
+                if (!isStoredDetailUnpaid(itemId, requestSeq)) {
+                    log.warn(
+                            "완납 처리된 건은 삭제 생략(동일 요청 내 다른 건 계속 처리). itemId={}, seq={}",
+                            itemId,
+                            requestSeq);
+                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
+                            requestSeq,
+                            "D",
+                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID));
+                    continue;
+                }
                 deleteDetailBlock(itemId, requestSeq);
                 existingSeqSet.remove(requestSeq);
                 continue;
@@ -137,6 +155,17 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     throw new IllegalArgumentException("신규 등록에서는 detail 수정(U)을 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "수정");
+                if (!isStoredDetailUnpaid(itemId, requestSeq)) {
+                    log.warn(
+                            "완납 처리된 건은 수정 생략(동일 요청 내 다른 건 계속 처리). itemId={}, seq={}",
+                            itemId,
+                            requestSeq);
+                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
+                            requestSeq,
+                            "U",
+                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID));
+                    continue;
+                }
                 upsertDetailBlock(itemId, chgUserId, detail, requestSeq, runCostCalculationOnSave);
                 targetSeqForCalculate = requestSeq;
                 continue;
@@ -159,7 +188,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
             throw new IllegalArgumentException("detail.rowStatus 값이 올바르지 않습니다. (I/U/D)");
         }
-        return new SaveResult(itemId, isNewItem, targetSeqForCalculate);
+        return new SaveResult(itemId, isNewItem, targetSeqForCalculate, skippedDetails);
     }
 
     @Override
@@ -273,6 +302,15 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         if (!existingSeqSet.contains(seq)) {
             throw new IllegalArgumentException(actionName + " 대상 SEQ가 존재하지 않습니다. seq=" + seq);
         }
+    }
+
+    /**
+     * 수정/삭제 가능 여부: DB(ARTITED.PAY_STA)만 기준 — 미납({@code '01'})일 때 true.
+     * 완납 건은 예외로 전체 요청을 실패시키지 않고 해당 행만 생략한다(배치 내 후속 I 등 처리).
+     */
+    private boolean isStoredDetailUnpaid(String itemId, int seq) {
+        String paySta = trimToEmpty(supportFeePayerManageDAO.selectArtitedPayStaByItemIdAndSeq(itemId, seq));
+        return "01".equals(paySta);
     }
 
     /**
@@ -412,7 +450,11 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     private record CostValues(Integer waterCost, BigDecimal waterVal, BigDecimal waterSum) {
     }
 
-    private record SaveResult(String itemId, boolean isNewItem, Integer targetSeqForCalculate) {
+    private record SaveResult(
+            String itemId,
+            boolean isNewItem,
+            Integer targetSeqForCalculate,
+            List<SupportFeePayerRegisterSkippedDetailResponse> skippedDetails) {
     }
 
     private static String resolveChgUserId() {
