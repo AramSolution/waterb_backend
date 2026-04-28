@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,11 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 import arami.common.CommonService;
 import arami.adminWeb.support.service.SupportFeePayerManageService;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailResponse;
@@ -152,6 +155,35 @@ public class SupportFeePayerManageController extends CommonService {
                             "오수 원인자부담금 납부내역 저장 중 오류가 발생했습니다.",
                             null,
                             List.of()));
+        }
+    }
+
+    /**
+     * 오수 원인자부담금 목록 삭제.
+     * - ITEM_ID + SEQ 대상 단건 삭제
+     * - DB ARTITED.PAY_STA가 미납('01')일 때만 삭제 허용
+     * - 완납('02')이면 "완납 건은 삭제하실 수 없습니다." 예외
+     * - 삭제 대상: ARTITEP, ARTITEC, ARTITED
+     */
+    @DeleteMapping(value = "/delete", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerDeleteResponse> deleteDetail(
+            @RequestBody @Valid SupportFeePayerDeleteRequest request) {
+        try {
+            return ResponseEntity.ok(supportFeePayerManageService.deleteFeePayerDetail(request));
+        } catch (IllegalArgumentException e) {
+            log.warn("support fee-payer detail delete: {}", e.getMessage());
+            return ResponseEntity.ok(new SupportFeePayerDeleteResponse("40", e.getMessage(), null, null));
+        } catch (Exception e) {
+            log.error("support fee-payer detail delete error: {}", e.getMessage(), e);
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new SupportFeePayerDeleteResponse(
+                            "01",
+                            "오수 원인자부담금 삭제 중 오류가 발생했습니다.",
+                            null,
+                            null));
         }
     }
 

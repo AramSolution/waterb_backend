@@ -32,6 +32,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpda
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerCalcRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerCostCalcRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDetailRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDetailSaveRequest;
@@ -40,6 +41,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequ
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculationResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
@@ -78,7 +80,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     @Override
     @Transactional
     public SupportFeePayerCalculateResponse calculateCost(SupportFeePayerRegisterRequest request, String chgUserId) {
-        SaveResult saveResult = saveFeePayer(request, false, chgUserId);
+        SaveResult saveResult = saveFeePayer(request, true, chgUserId);
         if (saveResult.targetSeqForCalculate() == null || saveResult.targetSeqForCalculate() <= 0) {
             throw new IllegalArgumentException("계산 대상 detail이 없습니다. (I/U rowStatus 필요)");
         }
@@ -424,9 +426,51 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
         return new SupportFeePayerPaymentSaveResponse(
                 "00",
-                egovMessageSource.getMessage("success.common.update"),
+                egovMessageSource.getMessage("success.common.insert"),
                 itemId,
                 skippedDetails);
+    }
+
+    @Override
+    @Transactional
+    public SupportFeePayerDeleteResponse deleteFeePayerDetail(SupportFeePayerDeleteRequest request) {
+        String itemId = trimToEmpty(request.getItemId());
+        if (itemId.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+
+        Integer seq = request.getSeq();
+        if (seq == null || seq <= 0) {
+            throw new IllegalArgumentException("SEQ는 필수입니다.");
+        }
+
+        if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+
+        Set<Integer> existingSeqSet = new HashSet<>(supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId));
+        validateExistingSeq(seq, existingSeqSet, "삭제");
+
+        String paySta = trimToEmpty(supportFeePayerManageDAO.selectArtitedPayStaByItemIdAndSeq(itemId, seq));
+        if ("02".equals(paySta)) {
+            throw new IllegalArgumentException("완납 건은 삭제하실 수 없습니다.");
+        }
+        if (!"01".equals(paySta)) {
+            throw new IllegalArgumentException("미납 건만 삭제할 수 있습니다.");
+        }
+
+        supportFeePayerManageDAO.deleteArtitepByItemIdAndSeq(itemId, seq);
+        supportFeePayerManageDAO.deleteArtitecByItemIdAndSeq(itemId, seq);
+        int deletedArtited = supportFeePayerManageDAO.deleteArtitedByItemIdAndSeq(itemId, seq);
+        if (deletedArtited <= 0) {
+            throw new IllegalStateException("삭제 대상이 존재하지 않습니다.");
+        }
+
+        return new SupportFeePayerDeleteResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.delete"),
+                itemId,
+                seq);
     }
 
     private SupportFeePayerArtitemInsertRequest buildBasicInfo(

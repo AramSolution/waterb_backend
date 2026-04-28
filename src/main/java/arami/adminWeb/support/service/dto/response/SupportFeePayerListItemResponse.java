@@ -25,6 +25,7 @@ public class SupportFeePayerListItemResponse {
     private BigDecimal waterSum;
     private Integer waterCost;
     private BigDecimal waterVal;
+    private Integer waterPay;
 
     private String payDay;
     private Integer pay;

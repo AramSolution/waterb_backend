@@ -98,6 +98,7 @@
                COALESCE(A1.WATER_SUM, 0) AS waterSum,
                COALESCE(A1.WATER_COST, 0) AS waterCost,
                COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               COALESCE(A1.WATER_PAY, 0) AS waterPay,
                (
                    SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
                      FROM ARTITEP P1
@@ -359,6 +360,12 @@
 
     <delete id="deleteArtitedByItemIdAndSeq">
         DELETE FROM ARTITED
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </delete>
+
+    <delete id="deleteArtitepByItemIdAndSeq">
+        DELETE FROM ARTITEP
          WHERE ITEM_ID = #{itemId}
            AND SEQ = #{seq}
     </delete>

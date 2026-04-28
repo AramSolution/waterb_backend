@@ -171,6 +171,13 @@ public class SupportFeePayerManageDAO extends EgovAbstractMapper {
         return delete("supportFeePayerManageDAO.deleteArtitedByItemIdAndSeq", param);
     }
 
+    public int deleteArtitepByItemIdAndSeq(String itemId, int seq) {
+        Map<String, Object> param = new HashMap<>(2);
+        param.put("itemId", itemId);
+        param.put("seq", seq);
+        return delete("supportFeePayerManageDAO.deleteArtitepByItemIdAndSeq", param);
+    }
+
     public String callCostProc(SupportFeePayerCostCalcRequest request) {
         return selectOne("supportFeePayerManageDAO.callCostProc", request);
     }
