@@ -17,14 +17,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import arami.common.CommonService;
 import arami.adminWeb.support.service.SupportFeePayerManageService;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
 import egovframework.com.cmm.EgovMessageSource;
 import egovframework.com.cmm.service.EgovProperties;
@@ -33,7 +37,7 @@ import egovframework.com.cmm.service.EgovProperties;
 @Validated
 @RestController
 @RequestMapping("/api/admin/support/fee-payer")
-public class SupportFeePayerManageController {
+public class SupportFeePayerManageController extends CommonService {
 
     @Resource(name = "supportFeePayerManageService")
     private SupportFeePayerManageService supportFeePayerManageService;
@@ -96,6 +100,62 @@ public class SupportFeePayerManageController {
     }
 
     /**
+     * 오수 원인자부담금 납부 상세 조회 (ITEM_ID 기준).
+     * - ARTITEM + ARTITED + ARTITEP 조합 조회
+     * - ARTITEP 데이터가 없어도 ARTITEM/ARTITED는 반드시 조회
+     */
+    @GetMapping(value = "/{itemId}/payment-detail", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerPaymentDetailResponse> paymentDetail(@PathVariable("itemId") String itemId) {
+        SupportFeePayerPaymentDetailResponse response = new SupportFeePayerPaymentDetailResponse();
+        try {
+            response.setData(supportFeePayerManageService.selectFeePayerPaymentDetail(itemId));
+            response.setResult("00");
+            response.setMessage(egovMessageSource.getMessage("success.common.select"));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.setResult("40");
+            response.setMessage(e.getMessage());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("support fee-payer payment detail error: {}", e.getMessage(), e);
+            response.setResult("01");
+            response.setMessage("오수 원인자부담금 납부 상세 조회 중 오류가 발생했습니다.");
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 오수 원인자부담금 납부내역 저장.
+     * - payment.rowStatus(I/U/D) 기준으로 ARTITEP 등록/수정/삭제 (DB상 미납 분만)
+     * - details[].paySta 지정 시 ARTITED.PAY_STA 갱신 (미납 분만; 완납 분은 생략)
+     * - 저장 완료 후 ITEM_ID의 각 SEQ별 누적 납부금액을 ARTITED.WATER_PAY에 반영
+     */
+    @PostMapping(value = "/payment", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerPaymentSaveResponse> savePayment(
+            @RequestBody @Valid SupportFeePayerPaymentSaveRequest request) {
+        try {
+            return ResponseEntity.ok(supportFeePayerManageService.saveFeePayerPayments(request, getCurrentUniqId()));
+        } catch (IllegalArgumentException e) {
+            log.warn("support fee-payer payment save: {}", e.getMessage());
+            return ResponseEntity.ok(new SupportFeePayerPaymentSaveResponse("40", e.getMessage(), null, List.of()));
+        } catch (Exception e) {
+            log.error("support fee-payer payment save error: {}", e.getMessage(), e);
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new SupportFeePayerPaymentSaveResponse(
+                            "01",
+                            "오수 원인자부담금 납부내역 저장 중 오류가 발생했습니다.",
+                            null,
+                            List.of()));
+        }
+    }
+
+    /**
      * 오수 원인자부담금 등록·수정(동일 URL).
      * - itemId 미전달: 신규 ARTITEM 채번 후 등록
      * - itemId 지정: ARTITEM 기본정보 수정 후 details 배열 단위로 ARTITED UPSERT, ARTITEC 동기화
@@ -106,7 +166,7 @@ public class SupportFeePayerManageController {
     public ResponseEntity<SupportFeePayerRegisterResponse> register(
             @RequestBody @Valid SupportFeePayerRegisterRequest request) {
         try {
-            SupportFeePayerRegisterResponse response = supportFeePayerManageService.register(request);
+            SupportFeePayerRegisterResponse response = supportFeePayerManageService.register(request, getCurrentUniqId());
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer register: {}", e.getMessage());
@@ -130,7 +190,7 @@ public class SupportFeePayerManageController {
     public ResponseEntity<SupportFeePayerCalculateResponse> calculate(
             @RequestBody @Valid SupportFeePayerRegisterRequest request) {
         try {
-            return ResponseEntity.ok(supportFeePayerManageService.calculateCost(request));
+            return ResponseEntity.ok(supportFeePayerManageService.calculateCost(request, getCurrentUniqId()));
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer calculate: {}", e.getMessage());
             return ResponseEntity.ok(
@@ -162,7 +222,7 @@ public class SupportFeePayerManageController {
             @PathVariable("itemId") String itemId,
             @RequestBody @Valid SupportFeePayerBasicInfoRequest request) {
         try {
-            return ResponseEntity.ok(supportFeePayerManageService.updateBasic(itemId, request));
+            return ResponseEntity.ok(supportFeePayerManageService.updateBasic(itemId, request, getCurrentUniqId()));
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer basic update: {}", e.getMessage());
             return ResponseEntity.ok(new SupportFeePayerBasicUpdateResponse("40", e.getMessage(), itemId));

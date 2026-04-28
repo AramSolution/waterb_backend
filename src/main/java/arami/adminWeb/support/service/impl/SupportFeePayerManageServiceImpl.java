@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,8 +18,6 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +26,17 @@ import arami.adminWeb.support.service.SupportFeePayerManageService;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitemInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitecInsertRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitepSaveRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedPayStaUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerCalcRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerCostCalcRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDetailRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDetailSaveRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
@@ -40,10 +44,14 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculat
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailDataResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailRowResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentHistoryResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterSkippedDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
 import egovframework.com.cmm.EgovMessageSource;
-import egovframework.com.cmm.LoginVO;
 
 @Slf4j
 @Service("supportFeePayerManageService")
@@ -59,8 +67,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     @Override
     @Transactional
-    public SupportFeePayerRegisterResponse register(SupportFeePayerRegisterRequest request) {
-        SaveResult saveResult = saveFeePayer(request, true);
+    public SupportFeePayerRegisterResponse register(SupportFeePayerRegisterRequest request, String chgUserId) {
+        SaveResult saveResult = saveFeePayer(request, true, chgUserId);
         String message = saveResult.isNewItem()
                 ? egovMessageSource.getMessage("success.common.insert")
                 : egovMessageSource.getMessage("success.common.update");
@@ -69,12 +77,11 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     @Override
     @Transactional
-    public SupportFeePayerCalculateResponse calculateCost(SupportFeePayerRegisterRequest request) {
-        SaveResult saveResult = saveFeePayer(request, false);
+    public SupportFeePayerCalculateResponse calculateCost(SupportFeePayerRegisterRequest request, String chgUserId) {
+        SaveResult saveResult = saveFeePayer(request, false, chgUserId);
         if (saveResult.targetSeqForCalculate() == null || saveResult.targetSeqForCalculate() <= 0) {
             throw new IllegalArgumentException("계산 대상 detail이 없습니다. (I/U rowStatus 필요)");
         }
-        String chgUserId = resolveChgUserId();
         CostValues values = calculateAndUpdateCost(saveResult.itemId(), saveResult.targetSeqForCalculate(), chgUserId);
         return new SupportFeePayerCalculateResponse(
                 "00",
@@ -87,8 +94,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 saveResult.skippedDetails());
     }
 
-    private SaveResult saveFeePayer(SupportFeePayerRegisterRequest request, boolean runCostCalculationOnSave) {
-        String chgUserId = resolveChgUserId();
+    private SaveResult saveFeePayer(SupportFeePayerRegisterRequest request, boolean runCostCalculationOnSave, String chgUserId) {
         String itemId;
         boolean isNewItem = trimToEmpty(request.getItemId()).isEmpty();
 
@@ -142,7 +148,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
                             requestSeq,
                             "D",
-                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID));
+                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID,
+                            null));
                     continue;
                 }
                 deleteDetailBlock(itemId, requestSeq);
@@ -163,7 +170,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
                             requestSeq,
                             "U",
-                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID));
+                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID,
+                            null));
                     continue;
                 }
                 upsertDetailBlock(itemId, chgUserId, detail, requestSeq, runCostCalculationOnSave);
@@ -193,7 +201,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     @Override
     @Transactional
-    public SupportFeePayerBasicUpdateResponse updateBasic(String itemId, SupportFeePayerBasicInfoRequest request) {
+    public SupportFeePayerBasicUpdateResponse updateBasic(String itemId, SupportFeePayerBasicInfoRequest request, String chgUserId) {
         String id = trimToEmpty(itemId);
         if (id.isEmpty()) {
             throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
@@ -201,7 +209,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         if (supportFeePayerManageDAO.countArtitemByItemId(id) <= 0) {
             throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
         }
-        String chgUserId = resolveChgUserId();
         SupportFeePayerArtitemInsertRequest row = buildBasicInfoRow(id, chgUserId, request);
         int updated = supportFeePayerManageDAO.updateArtitemBasic(row);
         if (updated <= 0) {
@@ -251,6 +258,175 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
         basic.setDetails(details);
         return basic;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupportFeePayerPaymentDetailDataResponse selectFeePayerPaymentDetail(String itemId) {
+        String id = trimToEmpty(itemId);
+        if (id.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+
+        SupportFeePayerPaymentDetailDataResponse basic = supportFeePayerManageDAO
+                .selectFeePayerPaymentBasicDetailByItemId(id);
+        if (basic == null) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+
+        List<SupportFeePayerPaymentDetailRowResponse> rows = supportFeePayerManageDAO
+                .selectFeePayerPaymentDetailRowsByItemId(id);
+
+        Map<Integer, SupportFeePayerPaymentDetailItemResponse> detailMap = new LinkedHashMap<>();
+        for (SupportFeePayerPaymentDetailRowResponse row : rows) {
+            Integer seq = row.getSeq();
+            if (seq == null) {
+                continue;
+            }
+
+            SupportFeePayerPaymentDetailItemResponse detail = detailMap.computeIfAbsent(seq, k -> {
+                SupportFeePayerPaymentDetailItemResponse d = new SupportFeePayerPaymentDetailItemResponse();
+                d.setSeq(row.getSeq());
+                d.setPaySta(row.getPaySta());
+                d.setType1(row.getType1());
+                d.setType2(row.getType2());
+                d.setReqDate(row.getReqDate());
+                d.setBaseCost(row.getBaseCost());
+                d.setWaterSum(row.getWaterSum());
+                d.setWaterVal(row.getWaterVal());
+                d.setWaterCost(row.getWaterCost());
+                d.setWaterPay(row.getWaterPay());
+                d.setPayments(new ArrayList<>());
+                return d;
+            });
+
+            if (row.getSeq2() != null) {
+                detail.getPayments().add(new SupportFeePayerPaymentHistoryResponse(
+                        row.getSeq2(),
+                        row.getPayDay(),
+                        row.getPay(),
+                        row.getPayDesc()));
+            }
+        }
+
+        basic.setDetails(new ArrayList<>(detailMap.values()));
+        return basic;
+    }
+
+    @Override
+    @Transactional
+    public SupportFeePayerPaymentSaveResponse saveFeePayerPayments(SupportFeePayerPaymentSaveRequest request, String chgUserId) {
+        String itemId = trimToEmpty(request.getItemId());
+        if (itemId.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+        if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+
+        Set<Integer> existingDetailSeqSet = new HashSet<>(supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId));
+
+        List<SupportFeePayerRegisterSkippedDetailResponse> skippedDetails = new ArrayList<>();
+
+        for (SupportFeePayerPaymentDetailSaveRequest detail : request.getDetails()) {
+            Integer seq = detail.getSeq();
+            validateExistingSeq(seq, existingDetailSeqSet, "납부저장");
+
+            // 등록 API와 동일: DB ARTITED.PAY_STA 기준 — 미납('01')만 납부·상태 갱신 허용. 완납('02') 등은 해당 SEQ만 생략.
+            if (!isStoredDetailUnpaid(itemId, seq)) {
+                log.warn(
+                        "완납 처리된 분은 납부내역 저장 생략(동일 요청 내 다른 SEQ 계속 처리). itemId={}, seq={}",
+                        itemId,
+                        seq);
+                if (trimToNull(detail.getPaySta()) != null) {
+                    log.warn(
+                            "완납 처리된 분은 PAY_STA 변경 생략(동일 요청 내 다른 SEQ 계속 처리). itemId={}, seq={}",
+                            itemId,
+                            seq);
+                }
+                skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
+                        seq,
+                        "PAYMENT",
+                        SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID,
+                        null));
+                continue;
+            }
+
+            List<Integer> existingPaySeq2s = supportFeePayerManageDAO.selectArtitepSeq2sByItemIdAndSeq(itemId, seq);
+            Set<Integer> existingPaySeq2Set = new HashSet<>(existingPaySeq2s);
+            Integer nextSeq2Hint = supportFeePayerManageDAO.getNextArtitepSeq2(itemId, seq);
+            int nextSeq2 = nextSeq2Hint != null ? nextSeq2Hint : 1;
+
+            List<SupportFeePayerPaymentRequest> payments = detail.getPayments() != null
+                    ? detail.getPayments()
+                    : List.of();
+            for (SupportFeePayerPaymentRequest payment : payments) {
+                String rowStatus = resolvePaymentRowStatus(payment);
+                Integer requestSeq2 = payment.getSeq2();
+
+                if ("D".equals(rowStatus)) {
+                    validateExistingPaySeq2(requestSeq2, existingPaySeq2Set, "삭제");
+                    supportFeePayerManageDAO.deleteArtitepByItemIdAndSeqAndSeq2(itemId, seq, requestSeq2);
+                    existingPaySeq2Set.remove(requestSeq2);
+                    continue;
+                }
+
+                if ("U".equals(rowStatus)) {
+                    validateExistingPaySeq2(requestSeq2, existingPaySeq2Set, "수정");
+                    log.warn(
+                            "납부내역 수정(U)은 허용되지 않습니다. 요청만 수신하고 갱신하지 않습니다. itemId={}, seq={}, seq2={}",
+                            itemId,
+                            seq,
+                            requestSeq2);
+                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
+                            seq,
+                            "U",
+                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_UPDATE_NOT_ALLOWED,
+                            requestSeq2));
+                    continue;
+                }
+
+                if ("I".equals(rowStatus)) {
+                    if (requestSeq2 != null && requestSeq2 > 0) {
+                        throw new IllegalArgumentException("신규 납부내역(I)에는 seq2를 지정할 수 없습니다.");
+                    }
+                    SupportFeePayerArtitepSaveRequest row = new SupportFeePayerArtitepSaveRequest();
+                    row.setItemId(itemId);
+                    row.setSeq(seq);
+                    row.setPayDay(parsePaymentDate(payment.getPayDay()));
+                    row.setPay(zeroIfNull(payment.getPay()));
+                    row.setPayDesc(trimToNull(payment.getPayDesc()));
+                    row.setChgUserId(chgUserId);
+                    row.setSeq2(nextSeq2++);
+                    supportFeePayerManageDAO.insertArtitep(row);
+                    continue;
+                }
+
+                throw new IllegalArgumentException("payment.rowStatus 값이 올바르지 않습니다. (I/D, U는 갱신되지 않음)");
+            }
+
+            String newPaySta = trimToNull(detail.getPaySta());
+            if (newPaySta != null) {
+                SupportFeePayerArtitedPayStaUpdateRequest staRow = new SupportFeePayerArtitedPayStaUpdateRequest();
+                staRow.setItemId(itemId);
+                staRow.setSeq(seq);
+                staRow.setPaySta(newPaySta);
+                staRow.setChgUserId(chgUserId);
+                int staUpdated = supportFeePayerManageDAO.updateArtitedPaySta(staRow);
+                if (staUpdated <= 0) {
+                    throw new IllegalStateException("납부 상태(PAY_STA) 수정에 실패했습니다. seq=" + seq);
+                }
+            }
+        }
+
+        // 납부내역 저장 완료 후 ITEM_ID의 각 SEQ별 누적 납부금액을 ARTITED.WATER_PAY에 반영
+        supportFeePayerManageDAO.updateArtitedWaterPayByItemId(itemId);
+
+        return new SupportFeePayerPaymentSaveResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.update"),
+                itemId,
+                skippedDetails);
     }
 
     private SupportFeePayerArtitemInsertRequest buildBasicInfo(
@@ -408,12 +584,29 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         return status.toUpperCase();
     }
 
+    private static String resolvePaymentRowStatus(SupportFeePayerPaymentRequest payment) {
+        String status = trimToNull(payment.getRowStatus());
+        if (status == null) {
+            return payment.getSeq2() != null && payment.getSeq2() > 0 ? "U" : "I";
+        }
+        return status.toUpperCase();
+    }
+
     private static void validateExistingSeq2(Integer seq2, Set<Integer> existingSeq2Set, String actionName) {
         if (seq2 == null || seq2 <= 0) {
             throw new IllegalArgumentException(actionName + " 대상 calculation.seq2는 필수입니다.");
         }
         if (!existingSeq2Set.contains(seq2)) {
             throw new IllegalArgumentException(actionName + " 대상 계산행 SEQ2가 존재하지 않습니다. seq2=" + seq2);
+        }
+    }
+
+    private static void validateExistingPaySeq2(Integer seq2, Set<Integer> existingSeq2Set, String actionName) {
+        if (seq2 == null || seq2 <= 0) {
+            throw new IllegalArgumentException(actionName + " 대상 납부내역.seq2는 필수입니다.");
+        }
+        if (!existingSeq2Set.contains(seq2)) {
+            throw new IllegalArgumentException(actionName + " 대상 납부내역 SEQ2가 존재하지 않습니다. seq2=" + seq2);
         }
     }
 
@@ -455,15 +648,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             boolean isNewItem,
             Integer targetSeqForCalculate,
             List<SupportFeePayerRegisterSkippedDetailResponse> skippedDetails) {
-    }
-
-    private static String resolveChgUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof LoginVO loginVO) {
-            String uniqId = loginVO.getUniqId();
-            return uniqId != null ? uniqId.trim() : "";
-        }
-        return "";
     }
 
     private static Integer zeroIfNull(Integer n) {
@@ -508,6 +692,19 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             return Date.valueOf(localDate);
         } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException("통지일 형식이 올바르지 않습니다. (yyyy-MM-dd)");
+        }
+    }
+
+    private static Date parsePaymentDate(String raw) {
+        String value = trimToNull(raw);
+        if (value == null) {
+            return null;
+        }
+        try {
+            LocalDate localDate = LocalDate.parse(value, DATE_FORMATTER);
+            return Date.valueOf(localDate);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("납부일 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
     }
 }

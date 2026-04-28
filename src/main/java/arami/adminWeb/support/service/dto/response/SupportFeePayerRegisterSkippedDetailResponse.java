@@ -21,5 +21,11 @@ public class SupportFeePayerRegisterSkippedDetailResponse {
     /** 생략 사유: 완납 건(ARTITED.PAY_STA가 미납 01이 아님) */
     public static final String SKIP_REASON_PAID = "PAID";
 
+    /** 납부 저장 API: 등록된 납부건(ARTITEP)은 수정 불가(U 요청 시 DB 미반영) */
+    public static final String SKIP_REASON_UPDATE_NOT_ALLOWED = "UPDATE_NOT_ALLOWED";
+
     private String skipReason;
+
+    /** 납부(ARTITEP) 행 단위 스킵 시 SEQ2. detail 단위 스킵(PAID 등)에서는 null */
+    private Integer seq2;
 }

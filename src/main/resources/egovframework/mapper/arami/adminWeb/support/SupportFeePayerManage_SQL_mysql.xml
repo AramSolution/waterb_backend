@@ -14,6 +14,18 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <select id="selectFeePayerPaymentBasicDetailByItemId" parameterType="string" resultType="SupportFeePayerPaymentDetailDataResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A1.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A1.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A1.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A1.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(DECRYPT(A1.USR_TELNO), '') AS usrTelno
+          FROM ARTITEM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
     <select id="selectFeePayerDetailListByItemId" parameterType="string" resultType="SupportFeePayerDetailItemResponse">
         SELECT A1.SEQ AS seq,
                COALESCE(A1.PAY_STA, '') AS paySta,
@@ -47,6 +59,29 @@
             ON B1.BUILD_ID = A1.BUILD_ID
          WHERE A1.ITEM_ID = #{_parameter}
          ORDER BY A1.SEQ ASC, A1.SEQ2 ASC
+    </select>
+
+    <select id="selectFeePayerPaymentDetailRowsByItemId" parameterType="string" resultType="SupportFeePayerPaymentDetailRowResponse">
+        SELECT A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               COALESCE(A1.TYPE_1, '') AS type1,
+               COALESCE(A1.TYPE_2, '') AS type2,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(A1.BASE_COST, 0) AS baseCost,
+               COALESCE(A1.WATER_SUM, 0) AS waterSum,
+               COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               COALESCE(A1.WATER_COST, 0) AS waterCost,
+               COALESCE(A1.WATER_PAY, 0) AS waterPay,
+               A2.SEQ2 AS seq2,
+               DATE_FORMAT(A2.PAY_DAY, '%Y-%m-%d') AS payDay,
+               COALESCE(A2.PAY, 0) AS pay,
+               COALESCE(A2.PAY_DESC, '') AS payDesc
+          FROM ARTITED A1
+          LEFT JOIN ARTITEP A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+           AND A2.SEQ = A1.SEQ
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
     </select>
 
     <!-- ITEM_ID 당 ARTITED SEQ 최대 1건(가장 최신 등록 분)만 목록에 포함 -->
@@ -268,9 +303,24 @@
            AND A1.SEQ = #{seq}
     </select>
 
+    <select id="getNextArtitepSeq2" resultType="int">
+        SELECT COALESCE(MAX(A1.SEQ2), 0) + 1
+          FROM ARTITEP A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+    </select>
+
     <select id="selectArtitecSeq2sByItemIdAndSeq" resultType="int">
         SELECT A1.SEQ2
           FROM ARTITEC A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+         ORDER BY A1.SEQ2 ASC
+    </select>
+
+    <select id="selectArtitepSeq2sByItemIdAndSeq" resultType="int">
+        SELECT A1.SEQ2
+          FROM ARTITEP A1
          WHERE A1.ITEM_ID = #{itemId}
            AND A1.SEQ = #{seq}
          ORDER BY A1.SEQ2 ASC
@@ -295,6 +345,13 @@
 
     <delete id="deleteArtitecByItemIdAndSeqAndSeq2">
         DELETE FROM ARTITEC
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </delete>
+
+    <delete id="deleteArtitepByItemIdAndSeqAndSeq2">
+        DELETE FROM ARTITEP
          WHERE ITEM_ID = #{itemId}
            AND SEQ = #{seq}
            AND SEQ2 = #{seq2}
@@ -366,5 +423,62 @@
             NOW()
         )
     </insert>
+
+    <insert id="insertArtitep" parameterType="SupportFeePayerArtitepSaveRequest">
+        INSERT INTO ARTITEP (
+            ITEM_ID,
+            SEQ,
+            SEQ2,
+            PAY_DAY,
+            PAY,
+            PAY_DESC,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{seq2},
+            #{payDay},
+            #{pay},
+            #{payDesc},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="updateArtitep" parameterType="SupportFeePayerArtitepSaveRequest">
+        UPDATE ARTITEP
+           SET PAY_DAY = #{payDay},
+               PAY = #{pay},
+               PAY_DESC = #{payDesc},
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </update>
+
+    <update id="updateArtitedPaySta" parameterType="SupportFeePayerArtitedPayStaUpdateRequest">
+        UPDATE ARTITED
+           SET PAY_STA = #{paySta},
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </update>
+
+    <update id="updateArtitedWaterPayByItemId" parameterType="string">
+        UPDATE ARTITED A1
+           SET A1.WATER_PAY = (
+                   SELECT COALESCE(SUM(COALESCE(P1.PAY, 0)), 0)
+                     FROM ARTITEP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+               ),
+               A1.CHG_DATE = NOW()
+         WHERE A1.ITEM_ID = #{_parameter}
+    </update>
 
 </mapper>
