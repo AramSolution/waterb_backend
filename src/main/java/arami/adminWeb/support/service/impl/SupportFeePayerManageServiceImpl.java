@@ -140,7 +140,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
             if ("D".equals(rowStatus)) {
                 if (isNewItem) {
-                    throw new IllegalArgumentException("신규 등록에서는 detail 삭제(D)를 사용할 수 없습니다.");
+                    throw new IllegalArgumentException("신규 등록에서는 삭제를 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "삭제");
                 if (!isStoredDetailUnpaid(itemId, requestSeq)) {
@@ -162,7 +162,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
             if ("U".equals(rowStatus)) {
                 if (isNewItem) {
-                    throw new IllegalArgumentException("신규 등록에서는 detail 수정(U)을 사용할 수 없습니다.");
+                    throw new IllegalArgumentException("신규 등록에서는 수정을 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "수정");
                 if (!isStoredDetailUnpaid(itemId, requestSeq)) {
@@ -183,9 +183,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             }
 
             if ("I".equals(rowStatus)) {
-                if (requestSeq != null && requestSeq > 0) {
-                    throw new IllegalArgumentException("신규 detail(I)에는 seq를 지정할 수 없습니다.");
-                }
                 if (!isNewItem && supportFeePayerManageDAO.countUnpaidArtitedByItemId(itemId) > 0) {
                     throw new IllegalArgumentException(
                             "미납건이 존재하여 추가 등록을 할 수 없습니다. 모든 건을 완납처리 후 진행해주세요.");
@@ -197,7 +194,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 continue;
             }
 
-            throw new IllegalArgumentException("detail.rowStatus 값이 올바르지 않습니다. (I/U/D)");
+            throw new IllegalArgumentException("등록 상태 값이 올바르지 않습니다. (I/U/D)");
         }
         return new SaveResult(itemId, isNewItem, targetSeqForCalculate, skippedDetails);
     }
@@ -441,7 +438,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 staRow.setChgUserId(chgUserId);
                 int staUpdated = supportFeePayerManageDAO.updateArtitedPaySta(staRow);
                 if (staUpdated <= 0) {
-                    throw new IllegalStateException("납부 상태(PAY_STA) 수정에 실패했습니다. seq=" + seq);
+                    throw new IllegalStateException("납부 상태 수정에 실패했습니다. seq=" + seq);
                 }
             }
         }
@@ -691,12 +688,12 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         SupportFeePayerCostCalcRequest procParam = new SupportFeePayerCostCalcRequest("01", itemId, seq);
         String procResult = supportFeePayerManageDAO.callCostProc(procParam);
         if (procResult == null || procResult.isBlank()) {
-            throw new IllegalStateException("f_cost 응답이 비어 있습니다.");
+            throw new IllegalStateException("프로시저 응답이 비어 있습니다.");
         }
 
         String[] parts = procResult.split("\\|", -1);
         if (parts.length < 2) {
-            throw new IllegalStateException("f_cost 응답 형식이 올바르지 않습니다. result=" + procResult);
+            throw new IllegalStateException("프로시저 응답 형식이 올바르지 않습니다. result=" + procResult);
         }
 
         Integer waterCost = parseInteger(parts[0]);
