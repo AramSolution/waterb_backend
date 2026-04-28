@@ -29,6 +29,7 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateRes
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
@@ -67,6 +68,28 @@ public class SupportFeePayerManageController extends CommonService {
             log.error("support fee-payer list error: {}", e.getMessage(), e);
             response.setResult("01");
             response.setMessage("오수 원인자부담금 관리 목록 조회 중 오류가 발생했습니다.");
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 오수 원인자부담금 관리 목록 엑셀 조회.
+     * - 목록 조회와 동일 조건/정렬로 전체 데이터 반환
+     */
+    @PostMapping(value = "/excel-list", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerExcelListResponse> excelList(
+            @RequestBody(required = false) SupportFeePayerListRequest request) {
+        SupportFeePayerExcelListResponse response = new SupportFeePayerExcelListResponse();
+        try {
+            SupportFeePayerListRequest actualRequest = request != null ? request : new SupportFeePayerListRequest();
+            response = supportFeePayerManageService.selectFeePayerExcelList(actualRequest);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("support fee-payer excel list error: {}", e.getMessage(), e);
+            response.setResult("01");
             if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
                 e.printStackTrace();
             }

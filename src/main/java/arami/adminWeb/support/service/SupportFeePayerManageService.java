@@ -11,6 +11,7 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateRes
 import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
@@ -25,6 +26,8 @@ public interface SupportFeePayerManageService {
     SupportFeePayerBasicUpdateResponse updateBasic(String itemId, SupportFeePayerBasicInfoRequest request, String chgUserId);
 
     List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request);
+
+    SupportFeePayerExcelListResponse selectFeePayerExcelList(SupportFeePayerListRequest request);
 
     SupportFeePayerDetailDataResponse selectFeePayerDetail(String itemId);
 

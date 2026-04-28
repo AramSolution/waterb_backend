@@ -45,6 +45,7 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculationResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailItemResponse;
@@ -226,6 +227,16 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     @Transactional(readOnly = true)
     public List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request) {
         return supportFeePayerManageDAO.selectFeePayerList(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupportFeePayerExcelListResponse selectFeePayerExcelList(SupportFeePayerListRequest request) {
+        SupportFeePayerListRequest actualRequest = request != null ? request : new SupportFeePayerListRequest();
+        SupportFeePayerExcelListResponse response = new SupportFeePayerExcelListResponse();
+        response.setData(supportFeePayerManageDAO.selectFeePayerList(actualRequest));
+        response.setResult("00");
+        return response;
     }
 
     @Override
