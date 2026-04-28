@@ -378,14 +378,28 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 Integer requestSeq2 = payment.getSeq2();
 
                 if ("D".equals(rowStatus)) {
-                    validateExistingPaySeq2(requestSeq2, existingPaySeq2Set, "삭제");
+                    if (!canProcessExistingPaySeq2(requestSeq2, existingPaySeq2Set)) {
+                        log.warn(
+                                "삭제 대상 납부내역 SEQ2가 존재하지 않아 해당 행을 건너뜁니다. itemId={}, seq={}, seq2={}",
+                                itemId,
+                                seq,
+                                requestSeq2);
+                        continue;
+                    }
                     supportFeePayerManageDAO.deleteArtitepByItemIdAndSeqAndSeq2(itemId, seq, requestSeq2);
                     existingPaySeq2Set.remove(requestSeq2);
                     continue;
                 }
 
                 if ("U".equals(rowStatus)) {
-                    validateExistingPaySeq2(requestSeq2, existingPaySeq2Set, "수정");
+                    if (!canProcessExistingPaySeq2(requestSeq2, existingPaySeq2Set)) {
+                        log.warn(
+                                "수정 대상 납부내역 SEQ2가 존재하지 않아 해당 행을 건너뜁니다. itemId={}, seq={}, seq2={}",
+                                itemId,
+                                seq,
+                                requestSeq2);
+                        continue;
+                    }
                     log.warn(
                             "납부내역 수정(U)은 허용되지 않습니다. 요청만 수신하고 갱신하지 않습니다. itemId={}, seq={}, seq2={}",
                             itemId,
@@ -576,7 +590,14 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             Integer requestSeq2 = calc.getSeq2();
 
             if ("D".equals(calcRowStatus)) {
-                validateExistingSeq2(requestSeq2, existingSeq2Set, "삭제");
+                if (!canProcessExistingCalcSeq2(requestSeq2, existingSeq2Set)) {
+                    log.warn(
+                            "삭제 대상 계산행 SEQ2가 존재하지 않아 해당 행을 건너뜁니다. itemId={}, seq={}, seq2={}",
+                            itemId,
+                            seq,
+                            requestSeq2);
+                    continue;
+                }
                 supportFeePayerManageDAO.deleteArtitecByItemIdAndSeqAndSeq2(itemId, seq, requestSeq2);
                 existingSeq2Set.remove(requestSeq2);
                 continue;
@@ -596,7 +617,14 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             c.setChgUserId(chgUserId);
 
             if ("U".equals(calcRowStatus)) {
-                validateExistingSeq2(requestSeq2, existingSeq2Set, "수정");
+                if (!canProcessExistingCalcSeq2(requestSeq2, existingSeq2Set)) {
+                    log.warn(
+                            "수정 대상 계산행 SEQ2가 존재하지 않아 해당 행을 건너뜁니다. itemId={}, seq={}, seq2={}",
+                            itemId,
+                            seq,
+                            requestSeq2);
+                    continue;
+                }
                 c.setSeq2(requestSeq2);
                 int updated = supportFeePayerManageDAO.updateArtitec(c);
                 if (updated <= 0) {
@@ -647,22 +675,12 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         return status.toUpperCase();
     }
 
-    private static void validateExistingSeq2(Integer seq2, Set<Integer> existingSeq2Set, String actionName) {
-        if (seq2 == null || seq2 <= 0) {
-            throw new IllegalArgumentException(actionName + " 대상 calculation.seq2는 필수입니다.");
-        }
-        if (!existingSeq2Set.contains(seq2)) {
-            throw new IllegalArgumentException(actionName + " 대상 계산행 SEQ2가 존재하지 않습니다. seq2=" + seq2);
-        }
+    private static boolean canProcessExistingCalcSeq2(Integer seq2, Set<Integer> existingSeq2Set) {
+        return seq2 != null && seq2 > 0 && existingSeq2Set.contains(seq2);
     }
 
-    private static void validateExistingPaySeq2(Integer seq2, Set<Integer> existingSeq2Set, String actionName) {
-        if (seq2 == null || seq2 <= 0) {
-            throw new IllegalArgumentException(actionName + " 대상 납부내역.seq2는 필수입니다.");
-        }
-        if (!existingSeq2Set.contains(seq2)) {
-            throw new IllegalArgumentException(actionName + " 대상 납부내역 SEQ2가 존재하지 않습니다. seq2=" + seq2);
-        }
+    private static boolean canProcessExistingPaySeq2(Integer seq2, Set<Integer> existingSeq2Set) {
+        return seq2 != null && seq2 > 0 && existingSeq2Set.contains(seq2);
     }
 
     /**
