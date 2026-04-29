@@ -47,14 +47,6 @@ ENV LANG=ko_KR.UTF-8 \
     LC_ALL=ko_KR.UTF-8 \
     TZ=Asia/Seoul
 
-# GPKI API 환경변수
-ENV GPKI_HOME="/home/aram/vol/gpki" \
-    JAVA_HOME="/opt/java/openjdk" \
-    CLASSPATH="/home/aram/vol/gpki/jar/libgpkiapi_jni.jar" \
-    LD_LIBRARY_PATH="/home/aram/vol/gpki/lib64/" \
-    LIBPATH="/home/aram/vol/gpki/lib64/"
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
-
 # Copy jar from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
@@ -70,11 +62,11 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8443
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD curl -fk https://localhost:8443/actuator/health || exit 1
 
 # JVM options
 ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"

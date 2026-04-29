@@ -80,32 +80,44 @@ public class EgovConfigAppMapper {
 		sqlSessionFactoryBean.setTypeAliasesPackage(
 			"arami.common.adminWeb.member.service.dto.request," +
 			"arami.common.adminWeb.member.service.dto.response," +
+			"arami.common.adminWeb.code.service.dto.request," +
+			"arami.common.adminWeb.code.service.dto.response," +
+			"arami.common.auth.service.dto," +
 			"arami.adminWeb.artprom.service.dto.request," +
 			"arami.adminWeb.artprom.service.dto.response," +
 			"arami.adminWeb.artappm.service.dto.request," +
 			"arami.adminWeb.artappm.service.dto.response," +
 			"arami.adminWeb.artapps.service.dto.request," +
 			"arami.adminWeb.artapps.service.dto.response," +
+			"arami.adminWeb.artchoi.service.dto.request," +
+			"arami.adminWeb.artchoi.service.dto.response," +
 			"arami.adminWeb.artedum.service.dto.request," +
 			"arami.adminWeb.artedum.service.dto.response," +
 			"arami.adminWeb.artadvi.service.dto.request," +
 			"arami.adminWeb.artadvi.service.dto.response," +
-			"arami.common.adminWeb.code.service.dto.request," +
-			"arami.common.adminWeb.code.service.dto.response," +
+			"arami.adminWeb.armchil.service.dto.response," +
+			"arami.adminWeb.armbuild.service.dto.request," +
+			"arami.adminWeb.armbuild.service.dto.response," +
+			"arami.adminWeb.banner.service.dto.request," +
+			"arami.adminWeb.banner.service.dto.response," +
+			"arami.adminWeb.support.service.dto.request," +
+			"arami.adminWeb.support.service.dto.response," +
 			"arami.shared.armuser.dto.request," +
 			"arami.shared.armuser.dto.response," +
 			"arami.shared.armchil.dto.request," +
 			"arami.shared.armchil.dto.response," +
 			"arami.shared.proc.dto.request," +
 			"arami.shared.proc.dto.response," +
+			"arami.shared.neis.dto.response," +
+			"arami.member.dto," +
 			"arami.userWeb.artprom.service.dto.request," +
 			"arami.userWeb.artprom.service.dto.response," +
+			"arami.userWeb.artappm.dto," +
+			"arami.userWeb.article.service.dto.response," +
 			"arami.userWeb.mentorWork.service.dto.request," +
 			"arami.userWeb.mentorWork.service.dto.response," +
-			"arami.adminWeb.banner.service.dto.request," +
-			"arami.adminWeb.banner.service.dto.response," +
-			"arami.adminWeb.armbuild.service.dto.request," +
-			"arami.adminWeb.armbuild.service.dto.response"
+			"arami.userWeb.oauth.service.dto.request," +
+			"arami.userWeb.oauth.service.dto.response"
 		);
 
 		try {
