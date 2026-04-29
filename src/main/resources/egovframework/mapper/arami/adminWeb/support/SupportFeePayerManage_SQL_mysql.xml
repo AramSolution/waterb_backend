@@ -184,6 +184,11 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <delete id="deleteArtitemByItemId" parameterType="string">
+        DELETE FROM ARTITEM
+         WHERE ITEM_ID = #{_parameter}
+    </delete>
+
     <update id="updateArtitemBasic" parameterType="SupportFeePayerArtitemInsertRequest">
         UPDATE ARTITEM
            SET USER_NM = ENCRYPT(#{userNm}),

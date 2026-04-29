@@ -40,6 +40,10 @@ public class SupportFeePayerManageDAO extends EgovAbstractMapper {
         return n != null ? n : 0;
     }
 
+    public int deleteArtitemByItemId(String itemId) {
+        return delete("supportFeePayerManageDAO.deleteArtitemByItemId", itemId);
+    }
+
     public int updateArtitemBasic(SupportFeePayerArtitemInsertRequest request) {
         return update("supportFeePayerManageDAO.updateArtitemBasic", request);
     }

@@ -481,11 +481,21 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             throw new IllegalArgumentException("미납 건만 삭제할 수 있습니다.");
         }
 
+        boolean lastArtitedForItem =
+                supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId).size() == 1;
+
         supportFeePayerManageDAO.deleteArtitepByItemIdAndSeq(itemId, seq);
         supportFeePayerManageDAO.deleteArtitecByItemIdAndSeq(itemId, seq);
         int deletedArtited = supportFeePayerManageDAO.deleteArtitedByItemIdAndSeq(itemId, seq);
         if (deletedArtited <= 0) {
             throw new IllegalStateException("삭제 대상이 존재하지 않습니다.");
+        }
+
+        if (lastArtitedForItem) {
+            int deletedArtitem = supportFeePayerManageDAO.deleteArtitemByItemId(itemId);
+            if (deletedArtitem <= 0) {
+                throw new IllegalStateException("ARTITEM 삭제에 실패했습니다.");
+            }
         }
 
         return new SupportFeePayerDeleteResponse(
