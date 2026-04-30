@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitemInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitecInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitepSaveRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedPayStaSyncByWaterParam;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedPayStaUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
@@ -207,6 +208,10 @@ public class SupportFeePayerManageDAO extends EgovAbstractMapper {
 
     public int updateArtitedWaterPayByItemId(String itemId) {
         return update("supportFeePayerManageDAO.updateArtitedWaterPayByItemId", itemId);
+    }
+
+    public int updateArtitedPayStaByWaterPayVsCost(SupportFeePayerArtitedPayStaSyncByWaterParam param) {
+        return update("supportFeePayerManageDAO.updateArtitedPayStaByWaterPayVsCost", param);
     }
 
     public int updateArtitedPaySta(SupportFeePayerArtitedPayStaUpdateRequest request) {

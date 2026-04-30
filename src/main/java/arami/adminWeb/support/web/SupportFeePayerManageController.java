@@ -158,6 +158,7 @@ public class SupportFeePayerManageController extends CommonService {
      * - payment.rowStatus(I/U/D) 기준으로 ARTITEP 등록/수정/삭제 (DB상 미납 분만)
      * - details[].paySta 지정 시 ARTITED.PAY_STA 갱신 (미납 분만; 완납 분은 생략)
      * - 저장 완료 후 ITEM_ID의 각 SEQ별 누적 납부금액을 ARTITED.WATER_PAY에 반영
+     * - 이후 WATER_PAY >= WATER_COST 이면 PAY_STA=02, 미만이면 01로 동기화 (WATER_COST NULL이면 PAY_STA 유지)
      */
     @PostMapping(value = "/payment", produces = "application/json;charset=UTF-8")
     public ResponseEntity<SupportFeePayerPaymentSaveResponse> savePayment(

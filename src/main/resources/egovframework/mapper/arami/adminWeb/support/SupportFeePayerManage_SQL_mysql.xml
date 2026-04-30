@@ -493,4 +493,17 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </update>
 
+    <!-- After WATER_PAY is refreshed from ARTITEP sums: PAY_STA 02 if paid total >= WATER_COST, else 01 (when WATER_COST is set). -->
+    <update id="updateArtitedPayStaByWaterPayVsCost" parameterType="SupportFeePayerArtitedPayStaSyncByWaterParam">
+        UPDATE ARTITED A1
+           SET A1.PAY_STA = CASE
+                   WHEN A1.WATER_COST IS NULL THEN A1.PAY_STA
+                   WHEN COALESCE(A1.WATER_PAY, 0) &gt;= COALESCE(A1.WATER_COST, 0) THEN '02'
+                   ELSE '01'
+               END,
+               A1.CHG_USER_ID = #{chgUserId},
+               A1.CHG_DATE = NOW()
+         WHERE A1.ITEM_ID = #{itemId}
+    </update>
+
 </mapper>

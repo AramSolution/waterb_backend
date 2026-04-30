@@ -27,6 +27,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitemInsertRe
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitecInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitepSaveRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedPayStaSyncByWaterParam;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedPayStaUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpdateRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
@@ -451,8 +452,10 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             }
         }
 
-        // 납부내역 저장 완료 후 ITEM_ID의 각 SEQ별 누적 납부금액을 ARTITED.WATER_PAY에 반영
+        // ARTITEP 반영 후 SEQ별 누적 납부액을 WATER_PAY에 갱신한 뒤, WATER_COST 대비 완납 여부로 PAY_STA 동기화
         supportFeePayerManageDAO.updateArtitedWaterPayByItemId(itemId);
+        supportFeePayerManageDAO.updateArtitedPayStaByWaterPayVsCost(
+                new SupportFeePayerArtitedPayStaSyncByWaterParam(itemId, chgUserId));
 
         return new SupportFeePayerPaymentSaveResponse(
                 "00",
