@@ -152,18 +152,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     throw new IllegalArgumentException("신규 등록에서는 삭제를 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "삭제");
-                if (!isStoredDetailUnpaid(itemId, requestSeq)) {
-                    log.warn(
-                            "완납 처리된 건은 삭제 생략(동일 요청 내 다른 건 계속 처리). itemId={}, seq={}",
-                            itemId,
-                            requestSeq);
-                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
-                            requestSeq,
-                            "D",
-                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID,
-                            null));
-                    continue;
-                }
                 deleteDetailBlock(itemId, requestSeq);
                 existingSeqSet.remove(requestSeq);
                 continue;
@@ -174,18 +162,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     throw new IllegalArgumentException("신규 등록에서는 수정을 사용할 수 없습니다.");
                 }
                 validateExistingSeq(requestSeq, existingSeqSet, "수정");
-                if (!isStoredDetailUnpaid(itemId, requestSeq)) {
-                    log.warn(
-                            "완납 처리된 건은 수정 생략(동일 요청 내 다른 건 계속 처리). itemId={}, seq={}",
-                            itemId,
-                            requestSeq);
-                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
-                            requestSeq,
-                            "U",
-                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_PAID,
-                            null));
-                    continue;
-                }
                 upsertDetailBlock(itemId, chgUserId, detail, requestSeq, runCostCalculationOnSave);
                 targetSeqForCalculate = requestSeq;
                 continue;
@@ -380,7 +356,16 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     ? detail.getPayments()
                     : List.of();
             for (SupportFeePayerPaymentRequest payment : payments) {
-                String rowStatus = resolvePaymentRowStatus(payment);
+                String rawRowStatus = trimToNull(payment.getRowStatus());
+                if (rawRowStatus == null) {
+                    log.debug(
+                            "payment row skipped (no rowStatus, no DB). itemId={}, seq={}, seq2={}",
+                            itemId,
+                            seq,
+                            payment.getSeq2());
+                    continue;
+                }
+                String rowStatus = rawRowStatus.toUpperCase();
                 Integer requestSeq2 = payment.getSeq2();
 
                 if ("D".equals(rowStatus)) {
@@ -667,14 +652,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         String status = trimToNull(calc.getRowStatus());
         if (status == null) {
             return calc.getSeq2() != null && calc.getSeq2() > 0 ? "U" : "I";
-        }
-        return status.toUpperCase();
-    }
-
-    private static String resolvePaymentRowStatus(SupportFeePayerPaymentRequest payment) {
-        String status = trimToNull(payment.getRowStatus());
-        if (status == null) {
-            return payment.getSeq2() != null && payment.getSeq2() > 0 ? "U" : "I";
         }
         return status.toUpperCase();
     }
