@@ -19,7 +19,7 @@ public class SupportFeePayerDetailRequest {
      * - I: 신규 등록 (seq 미지정 권장, 서버 채번)
      * - U: 수정 (기존 seq 필수)
      * - D: 삭제 (기존 seq 필수)
-     * 미지정 시 호환을 위해 seq가 있으면 U, 없으면 I로 처리.
+     * 미지정 또는 공백이면 해당 행은 변경 없음으로 처리하고 서버에서 상세(ARTITED/ARTITEC) 갱신을 하지 않는다.
      */
     private String rowStatus;
 

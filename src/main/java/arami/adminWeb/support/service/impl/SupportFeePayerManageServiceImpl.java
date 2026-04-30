@@ -135,7 +135,15 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         List<SupportFeePayerRegisterSkippedDetailResponse> skippedDetails = new ArrayList<>();
 
         for (SupportFeePayerDetailRequest detail : details) {
-            String rowStatus = resolveRowStatus(detail);
+            String rawRowStatus = trimToNull(detail.getRowStatus());
+            if (rawRowStatus == null) {
+                log.debug(
+                        "detail row skipped (no rowStatus, no DB). itemId={}, seq={}",
+                        itemId,
+                        detail.getSeq());
+                continue;
+            }
+            String rowStatus = rawRowStatus.toUpperCase();
             Integer requestSeq = detail.getSeq();
 
             if ("D".equals(rowStatus)) {
@@ -194,7 +202,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 continue;
             }
 
-            throw new IllegalArgumentException("등록 상태 값이 올바르지 않습니다. (I/U/D)");
+            throw new IllegalArgumentException("등록 상태 값이 올바르지 않습니다. (I/U/D, blank rowStatus skips row)");
         }
         return new SaveResult(itemId, isNewItem, targetSeqForCalculate, skippedDetails);
     }
@@ -342,7 +350,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             Integer seq = detail.getSeq();
             validateExistingSeq(seq, existingDetailSeqSet, "납부저장");
 
-            // 등록 API와 동일: DB ARTITED.PAY_STA 기준 — 미납('01')만 납부·상태 갱신 허용. 완납('02') 등은 해당 SEQ만 생략.
+            // Same rule as register API: unpaid PAY_STA 01 only; paid seq skipped.
             if (!isStoredDetailUnpaid(itemId, seq)) {
                 log.warn(
                         "완납 처리된 분은 납부내역 저장 생략(동일 요청 내 다른 SEQ 계속 처리). itemId={}, seq={}",
@@ -539,14 +547,6 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         }
     }
 
-    private static String resolveRowStatus(SupportFeePayerDetailRequest detail) {
-        String status = trimToNull(detail.getRowStatus());
-        if (status == null) {
-            return detail.getSeq() != null && detail.getSeq() > 0 ? "U" : "I";
-        }
-        return status.toUpperCase();
-    }
-
     private static void validateExistingSeq(Integer seq, Set<Integer> existingSeqSet, String actionName) {
         if (seq == null || seq <= 0) {
             throw new IllegalArgumentException(actionName + " 대상 detail.seq는 필수입니다.");
@@ -556,19 +556,13 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         }
     }
 
-    /**
-     * 수정/삭제 가능 여부: DB(ARTITED.PAY_STA)만 기준 — 미납({@code '01'})일 때 true.
-     * 완납 건은 예외로 전체 요청을 실패시키지 않고 해당 행만 생략한다(배치 내 후속 I 등 처리).
-     */
+    /* PAY_STA 01(unpaid): row may be edited; paid rows are skipped per-row, not failing whole request. */
     private boolean isStoredDetailUnpaid(String itemId, int seq) {
         String paySta = trimToEmpty(supportFeePayerManageDAO.selectArtitedPayStaByItemIdAndSeq(itemId, seq));
         return "01".equals(paySta);
     }
 
-    /**
-     * ARTITED: INSERT … ON DUPLICATE KEY UPDATE.
-     * ARTITEC: 동일 (ITEM_ID, SEQ) 산정목록을 삭제 후 요청 배열 순서대로 SEQ2=1..n 재등록.
-     */
+    /* Upserts ARTITED; ARTITEC rows follow calculations array (I/U/D per calc row). */
     private void upsertDetailBlock(
             String itemId,
             String chgUserId,
