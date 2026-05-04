@@ -13,4 +13,6 @@ public class SupportFeePayerDeleteResponse {
     private String message;
     private String itemId;
     private Integer seq;
+    /** 산정 행만 삭제한 경우에만 세팅 */
+    private Integer seq2;
 }

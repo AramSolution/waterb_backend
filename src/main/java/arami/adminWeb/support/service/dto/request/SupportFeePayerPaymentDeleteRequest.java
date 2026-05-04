@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SupportFeePayerDeleteRequest {
+public class SupportFeePayerPaymentDeleteRequest {
 
     @NotBlank
     private String itemId;
@@ -17,6 +17,7 @@ public class SupportFeePayerDeleteRequest {
     @NotNull
     private Integer seq;
 
-    /** 미입력 시 통지일 블록(ARTITED) 전체 삭제. 지정 시 해당 산정 행(ARTITEC)만 삭제. */
+    /** ARTITEP 납부 행 SEQ2 (필수). */
+    @NotNull
     private Integer seq2;
 }

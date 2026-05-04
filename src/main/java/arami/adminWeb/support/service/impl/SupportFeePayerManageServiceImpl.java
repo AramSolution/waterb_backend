@@ -37,6 +37,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDetailRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDetailSaveRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
@@ -454,7 +455,54 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     @Override
     @Transactional
-    public SupportFeePayerDeleteResponse deleteFeePayerDetail(SupportFeePayerDeleteRequest request) {
+    public SupportFeePayerDeleteResponse deleteFeePayerPayment(
+            SupportFeePayerPaymentDeleteRequest request, String chgUserId) {
+        String itemId = trimToEmpty(request.getItemId());
+        if (itemId.isEmpty()) {
+            throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
+        }
+        Integer seqObj = request.getSeq();
+        if (seqObj == null || seqObj <= 0) {
+            throw new IllegalArgumentException("SEQ는 필수입니다.");
+        }
+        int seq = seqObj;
+        Integer seq2Obj = request.getSeq2();
+        if (seq2Obj == null || seq2Obj <= 0) {
+            throw new IllegalArgumentException("납부내역 SEQ2는 필수입니다.");
+        }
+        int seq2 = seq2Obj;
+        if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+        Set<Integer> existingDetailSeqSet =
+                new HashSet<>(supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId));
+        validateExistingSeq(seq, existingDetailSeqSet, "납부내역삭제");
+        if (!isStoredDetailUnpaid(itemId, seq)) {
+            throw new IllegalArgumentException("완납 건의 납부내역은 삭제하실 수 없습니다.");
+        }
+        List<Integer> existingPaySeq2s = supportFeePayerManageDAO.selectArtitepSeq2sByItemIdAndSeq(itemId, seq);
+        Set<Integer> existingPaySeq2Set = new HashSet<>(existingPaySeq2s);
+        if (!canProcessExistingPaySeq2(seq2, existingPaySeq2Set)) {
+            throw new IllegalArgumentException("삭제 대상 납부내역이 존재하지 않습니다.");
+        }
+        int deleted = supportFeePayerManageDAO.deleteArtitepByItemIdAndSeqAndSeq2(itemId, seq, seq2);
+        if (deleted <= 0) {
+            throw new IllegalStateException("납부내역 삭제에 실패했습니다.");
+        }
+        supportFeePayerManageDAO.updateArtitedWaterPayByItemId(itemId);
+        supportFeePayerManageDAO.updateArtitedPayStaByWaterPayVsCost(
+                new SupportFeePayerArtitedPayStaSyncByWaterParam(itemId, chgUserId));
+        return new SupportFeePayerDeleteResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.delete"),
+                itemId,
+                seq,
+                seq2);
+    }
+
+    @Override
+    @Transactional
+    public SupportFeePayerDeleteResponse deleteFeePayerDetail(SupportFeePayerDeleteRequest request, String chgUserId) {
         String itemId = trimToEmpty(request.getItemId());
         if (itemId.isEmpty()) {
             throw new IllegalArgumentException("ITEM_ID는 필수입니다.");
@@ -463,6 +511,11 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
         Integer seq = request.getSeq();
         if (seq == null || seq <= 0) {
             throw new IllegalArgumentException("SEQ는 필수입니다.");
+        }
+
+        Integer seq2 = request.getSeq2();
+        if (seq2 != null && seq2 > 0) {
+            return deleteFeePayerArtitecRow(itemId, seq, seq2, chgUserId);
         }
 
         if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
@@ -501,7 +554,72 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 "00",
                 egovMessageSource.getMessage("success.common.delete"),
                 itemId,
-                seq);
+                seq,
+                null);
+    }
+
+    /**
+     * 산정 행(ARTITEC) 1건 삭제. 동일 SEQ에 산정 행이 없으면 통지일 블록(ARTITED) 및 납부행(ARTITEP)까지 삭제.
+     */
+    private SupportFeePayerDeleteResponse deleteFeePayerArtitecRow(
+            String itemId,
+            int seq,
+            int seq2,
+            String chgUserId) {
+        String chg = trimToEmpty(chgUserId);
+        if (chg.isEmpty()) {
+            chg = "SYSTEM";
+        }
+
+        if (supportFeePayerManageDAO.countArtitemByItemId(itemId) <= 0) {
+            throw new IllegalArgumentException("존재하지 않는 ITEM_ID입니다.");
+        }
+
+        Set<Integer> existingSeqSet = new HashSet<>(supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId));
+        validateExistingSeq(seq, existingSeqSet, "삭제");
+
+        String paySta = trimToEmpty(supportFeePayerManageDAO.selectArtitedPayStaByItemIdAndSeq(itemId, seq));
+        if ("02".equals(paySta)) {
+            throw new IllegalArgumentException("완납 건은 삭제하실 수 없습니다.");
+        }
+        if (!"01".equals(paySta)) {
+            throw new IllegalArgumentException("미납 건만 삭제할 수 있습니다.");
+        }
+
+        List<Integer> seq2List = supportFeePayerManageDAO.selectArtitecSeq2sByItemIdAndSeq(itemId, seq);
+        if (!new HashSet<>(seq2List).contains(seq2)) {
+            throw new IllegalArgumentException("삭제 대상 산정 행(SEQ2)이 존재하지 않습니다.");
+        }
+
+        int deletedRow = supportFeePayerManageDAO.deleteArtitecByItemIdAndSeqAndSeq2(itemId, seq, seq2);
+        if (deletedRow <= 0) {
+            throw new IllegalStateException("산정 행 삭제에 실패했습니다.");
+        }
+
+        List<Integer> remaining = supportFeePayerManageDAO.selectArtitecSeq2sByItemIdAndSeq(itemId, seq);
+        if (remaining.isEmpty()) {
+            supportFeePayerManageDAO.deleteArtitepByItemIdAndSeq(itemId, seq);
+            int deletedArtited = supportFeePayerManageDAO.deleteArtitedByItemIdAndSeq(itemId, seq);
+            if (deletedArtited <= 0) {
+                throw new IllegalStateException("통지일 블록 삭제에 실패했습니다.");
+            }
+            List<Integer> restArtited = supportFeePayerManageDAO.selectArtitedSeqsByItemId(itemId);
+            if (restArtited.isEmpty()) {
+                int deletedArtitem = supportFeePayerManageDAO.deleteArtitemByItemId(itemId);
+                if (deletedArtitem <= 0) {
+                    throw new IllegalStateException("ARTITEM 삭제에 실패했습니다.");
+                }
+            }
+        } else {
+            calculateAndUpdateCost(itemId, seq, chg);
+        }
+
+        return new SupportFeePayerDeleteResponse(
+                "00",
+                egovMessageSource.getMessage("success.common.delete"),
+                itemId,
+                seq,
+                seq2);
     }
 
     private SupportFeePayerArtitemInsertRequest buildBasicInfo(

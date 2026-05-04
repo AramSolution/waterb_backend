@@ -5,6 +5,7 @@ import java.util.List;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
@@ -35,5 +36,7 @@ public interface SupportFeePayerManageService {
 
     SupportFeePayerPaymentSaveResponse saveFeePayerPayments(SupportFeePayerPaymentSaveRequest request, String chgUserId);
 
-    SupportFeePayerDeleteResponse deleteFeePayerDetail(SupportFeePayerDeleteRequest request);
+    SupportFeePayerDeleteResponse deleteFeePayerPayment(SupportFeePayerPaymentDeleteRequest request, String chgUserId);
+
+    SupportFeePayerDeleteResponse deleteFeePayerDetail(SupportFeePayerDeleteRequest request, String chgUserId);
 }

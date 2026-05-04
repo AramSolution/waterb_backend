@@ -23,6 +23,7 @@ import arami.adminWeb.support.service.SupportFeePayerManageService;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerBasicUpdateResponse;
@@ -183,20 +184,51 @@ public class SupportFeePayerManageController extends CommonService {
     }
 
     /**
+     * 납부내역(ARTITEP) 1건 삭제.
+     * - {@link SupportFeePayerManageService#saveFeePayerPayments} 의 payment.rowStatus=D 와 동일 규칙(미납 분만, 존재 SEQ2만 삭제)
+     * - 삭제 후 ARTITED.WATER_PAY 반영 및 PAY_STA 동기화
+     */
+    @DeleteMapping(value = "/payment/delete", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerDeleteResponse> deletePayment(
+            @RequestBody @Valid SupportFeePayerPaymentDeleteRequest request) {
+        try {
+            return ResponseEntity.ok(
+                    supportFeePayerManageService.deleteFeePayerPayment(request, getCurrentUniqId()));
+        } catch (IllegalArgumentException e) {
+            log.warn("support fee-payer payment delete: {}", e.getMessage());
+            return ResponseEntity.ok(new SupportFeePayerDeleteResponse("40", e.getMessage(), null, null, null));
+        } catch (Exception e) {
+            log.error("support fee-payer payment delete error: {}", e.getMessage(), e);
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new SupportFeePayerDeleteResponse(
+                            "01",
+                            "오수 원인자부담금 납부내역 삭제 중 오류가 발생했습니다.",
+                            null,
+                            null,
+                            null));
+        }
+    }
+
+    /**
      * 오수 원인자부담금 목록 삭제.
      * - ITEM_ID + SEQ 대상 단건 삭제
      * - DB ARTITED.PAY_STA가 미납('01')일 때만 삭제 허용
      * - 완납('02')이면 "완납 건은 삭제하실 수 없습니다." 예외
      * - 삭제 대상: ARTITEP, ARTITEC, ARTITED
+     * - 요청에 seq2 지정 시: 해당 산정 행(ARTITEC)만 삭제 후 비용 재계산; 해당 SEQ의 산정 행이 모두 없어지면 위와 동일하게 통지일 블록 전체 삭제
      */
     @DeleteMapping(value = "/delete", produces = "application/json;charset=UTF-8")
     public ResponseEntity<SupportFeePayerDeleteResponse> deleteDetail(
             @RequestBody @Valid SupportFeePayerDeleteRequest request) {
         try {
-            return ResponseEntity.ok(supportFeePayerManageService.deleteFeePayerDetail(request));
+            return ResponseEntity.ok(
+                    supportFeePayerManageService.deleteFeePayerDetail(request, getCurrentUniqId()));
         } catch (IllegalArgumentException e) {
             log.warn("support fee-payer detail delete: {}", e.getMessage());
-            return ResponseEntity.ok(new SupportFeePayerDeleteResponse("40", e.getMessage(), null, null));
+            return ResponseEntity.ok(new SupportFeePayerDeleteResponse("40", e.getMessage(), null, null, null));
         } catch (Exception e) {
             log.error("support fee-payer detail delete error: {}", e.getMessage(), e);
             if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
@@ -206,6 +238,7 @@ public class SupportFeePayerManageController extends CommonService {
                     .body(new SupportFeePayerDeleteResponse(
                             "01",
                             "오수 원인자부담금 삭제 중 오류가 발생했습니다.",
+                            null,
                             null,
                             null));
         }
