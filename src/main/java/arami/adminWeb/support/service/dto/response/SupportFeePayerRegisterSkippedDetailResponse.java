@@ -15,14 +15,11 @@ public class SupportFeePayerRegisterSkippedDetailResponse {
     /** ARTITED SEQ */
     private Integer seq;
 
-    /** 요청된 detail.rowStatus (U: 수정, D: 삭제) */
+    /** 요청 컨텍스트 (예: 납부 저장 API에서 detail 단위 생략 시 "PAYMENT") */
     private String requestedRowStatus;
 
     /** 생략 사유: 완납 건(ARTITED.PAY_STA가 미납 01이 아님) */
     public static final String SKIP_REASON_PAID = "PAID";
-
-    /** 납부 저장 API: 등록된 납부건(ARTITEP)은 수정 불가(U 요청 시 DB 미반영) */
-    public static final String SKIP_REASON_UPDATE_NOT_ALLOWED = "UPDATE_NOT_ALLOWED";
 
     private String skipReason;
 

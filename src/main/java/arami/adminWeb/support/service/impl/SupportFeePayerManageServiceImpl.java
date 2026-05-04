@@ -391,16 +391,19 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                                 requestSeq2);
                         continue;
                     }
-                    log.warn(
-                            "납부내역 수정(U)은 허용되지 않습니다. 요청만 수신하고 갱신하지 않습니다. itemId={}, seq={}, seq2={}",
-                            itemId,
-                            seq,
-                            requestSeq2);
-                    skippedDetails.add(new SupportFeePayerRegisterSkippedDetailResponse(
-                            seq,
-                            "U",
-                            SupportFeePayerRegisterSkippedDetailResponse.SKIP_REASON_UPDATE_NOT_ALLOWED,
-                            requestSeq2));
+                    SupportFeePayerArtitepSaveRequest updateRow = new SupportFeePayerArtitepSaveRequest();
+                    updateRow.setItemId(itemId);
+                    updateRow.setSeq(seq);
+                    updateRow.setSeq2(requestSeq2);
+                    updateRow.setPayDay(parsePaymentDate(payment.getPayDay()));
+                    updateRow.setPay(zeroIfNull(payment.getPay()));
+                    updateRow.setPayDesc(trimToNull(payment.getPayDesc()));
+                    updateRow.setChgUserId(chgUserId);
+                    int updated = supportFeePayerManageDAO.updateArtitep(updateRow);
+                    if (updated <= 0) {
+                        throw new IllegalStateException(
+                                "납부내역 수정에 실패했습니다. itemId=" + itemId + ", seq=" + seq + ", seq2=" + requestSeq2);
+                    }
                     continue;
                 }
 
@@ -420,7 +423,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                     continue;
                 }
 
-                throw new IllegalArgumentException("payment.rowStatus 값이 올바르지 않습니다. (I/D, U는 갱신되지 않음)");
+                throw new IllegalArgumentException("payment.rowStatus 값이 올바르지 않습니다. (I, U, D)");
             }
 
             String newPaySta = trimToNull(detail.getPaySta());
