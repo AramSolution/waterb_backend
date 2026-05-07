@@ -713,6 +713,8 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
                 continue;
             }
 
+            validateCalculationRequiredFields(calc);
+
             SupportFeePayerArtitecInsertRequest c = new SupportFeePayerArtitecInsertRequest();
             c.setItemId(itemId);
             c.setSeq(seq);
@@ -783,6 +785,12 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     private static boolean canProcessExistingPaySeq2(Integer seq2, Set<Integer> existingSeq2Set) {
         return seq2 != null && seq2 > 0 && existingSeq2Set.contains(seq2);
+    }
+
+    private static void validateCalculationRequiredFields(SupportFeePayerCalcRequest calc) {
+        if (trimToNull(calc.getBuildId()) == null) {
+            throw new IllegalArgumentException("용도를 선택해주세요.");
+        }
     }
 
     /**
