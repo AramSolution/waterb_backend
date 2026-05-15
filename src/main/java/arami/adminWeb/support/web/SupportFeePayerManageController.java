@@ -23,6 +23,7 @@ import arami.adminWeb.support.service.SupportFeePayerManageService;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerUnpaidListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
@@ -32,6 +33,7 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerUnpaidListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
@@ -55,13 +57,13 @@ public class SupportFeePayerManageController extends CommonService {
      * - ARTITED + ARTITEM 기준, ITEM_ID 당 SEQ 최대 1건(가장 최신 분)만 행으로 반환
      * - 납부(ARTITEP)는 해당 분 기준 최신 1건(납부일/납부액)만 조회
      * - 납부 이력이 없으면 납부일 null, 납부액 0
+     * - 페이징: {@code startIndex}(기본 0), {@code lengthPage}(기본 15)
      */
     @PostMapping(value = "/list", produces = "application/json;charset=UTF-8")
     public ResponseEntity<SupportFeePayerListResponse> list(@RequestBody(required = false) SupportFeePayerListRequest request) {
         SupportFeePayerListResponse response = new SupportFeePayerListResponse();
         try {
-            SupportFeePayerListRequest actualRequest = request != null ? request : new SupportFeePayerListRequest();
-            response.setData(supportFeePayerManageService.selectFeePayerList(actualRequest));
+            response = supportFeePayerManageService.selectFeePayerList(request);
             response.setResult("00");
             response.setMessage(egovMessageSource.getMessage("success.common.select"));
             return ResponseEntity.ok(response);
@@ -69,6 +71,37 @@ public class SupportFeePayerManageController extends CommonService {
             log.error("support fee-payer list error: {}", e.getMessage(), e);
             response.setResult("01");
             response.setMessage("오수 원인자부담금 관리 목록 조회 중 오류가 발생했습니다.");
+            if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
+                e.printStackTrace();
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 오수 원인자부담금 관리 목록 조회 (미납만).
+     * - 요청 {@code baseMonth}(yyyy-MM)의 <strong>연도 전체</strong> 통지일({@code REQ_DATE}) 대상
+     * - ITEM_ID 당 최신 분(SEQ 최대) 중 {@code PAY_STA = '01'}(미납)만 반환
+     * - 페이징: {@code startIndex}(기본 0), {@code lengthPage}(기본 15)
+     */
+    @PostMapping(value = "/unpaid-list", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<SupportFeePayerUnpaidListResponse> unpaidList(
+            @RequestBody @Valid SupportFeePayerUnpaidListRequest request) {
+        SupportFeePayerUnpaidListResponse response = new SupportFeePayerUnpaidListResponse();
+        try {
+            response = supportFeePayerManageService.selectFeePayerUnpaidList(request);
+            response.setResult("00");
+            response.setMessage(egovMessageSource.getMessage("success.common.select"));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("support fee-payer unpaid-list validation: {}", e.getMessage());
+            response.setResult("01");
+            response.setMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            log.error("support fee-payer unpaid-list error: {}", e.getMessage(), e);
+            response.setResult("01");
+            response.setMessage("오수 원인자부담금 미납 목록 조회 중 오류가 발생했습니다.");
             if ("true".equals(EgovProperties.getProperty("Globals.debug"))) {
                 e.printStackTrace();
             }

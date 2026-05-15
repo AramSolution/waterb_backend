@@ -5,6 +5,7 @@ import java.util.List;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerBasicInfoRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerUnpaidListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerRegisterRequest;
@@ -13,7 +14,8 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerCalculateRespo
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDeleteResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
-import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerUnpaidListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentSaveResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerRegisterResponse;
@@ -26,7 +28,13 @@ public interface SupportFeePayerManageService {
 
     SupportFeePayerBasicUpdateResponse updateBasic(String itemId, SupportFeePayerBasicInfoRequest request, String chgUserId);
 
-    List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request);
+    SupportFeePayerListResponse selectFeePayerList(SupportFeePayerListRequest request);
+
+    /**
+     * 미납(PAY_STA=01) 건만 목록 조회.
+     * {@code baseMonth}에 해당하는 연도 전체 통지일({@code REQ_DATE}) 기준.
+     */
+    SupportFeePayerUnpaidListResponse selectFeePayerUnpaidList(SupportFeePayerUnpaidListRequest request);
 
     SupportFeePayerExcelListResponse selectFeePayerExcelList(SupportFeePayerListRequest request);
 

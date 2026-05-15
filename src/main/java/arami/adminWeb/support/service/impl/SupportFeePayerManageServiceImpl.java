@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -36,6 +37,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerCostCalcRequest
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerDetailRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerUnpaidListRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDetailSaveRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentDeleteRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerPaymentRequest;
@@ -49,6 +51,8 @@ import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResp
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerExcelListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerListItemResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerListResponse;
+import arami.adminWeb.support.service.dto.response.SupportFeePayerUnpaidListResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailItemResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerPaymentDetailRowResponse;
@@ -208,8 +212,42 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
 
     @Override
     @Transactional(readOnly = true)
-    public List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request) {
-        return supportFeePayerManageDAO.selectFeePayerList(request);
+    public SupportFeePayerListResponse selectFeePayerList(SupportFeePayerListRequest request) {
+        SupportFeePayerListRequest queryParam = buildFeePayerListQueryParam(request);
+        int totalCount = supportFeePayerManageDAO.selectFeePayerListCount(queryParam);
+        SupportFeePayerListResponse response = new SupportFeePayerListResponse();
+        response.setData(supportFeePayerManageDAO.selectFeePayerList(queryParam));
+        response.setRecordsTotal(totalCount);
+        response.setRecordsFiltered(totalCount);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupportFeePayerUnpaidListResponse selectFeePayerUnpaidList(SupportFeePayerUnpaidListRequest request) {
+        if (request == null || request.getBaseMonth() == null || request.getBaseMonth().isBlank()) {
+            throw new IllegalArgumentException("기준월(baseMonth)은 필수입니다.");
+        }
+        String normalized;
+        try {
+            normalized = YearMonth.parse(request.getBaseMonth().trim()).toString();
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("기준월 형식이 올바르지 않습니다.", ex);
+        }
+        SupportFeePayerUnpaidListRequest queryParam = new SupportFeePayerUnpaidListRequest();
+        queryParam.setBaseMonth(normalized);
+        queryParam.setStartIndex(request.getStartIndex());
+        queryParam.setLengthPage(request.getLengthPage());
+        queryParam.setStart(request.getStart());
+        queryParam.setLength(request.getLength());
+        applyPagingForSql(queryParam);
+
+        int totalCount = supportFeePayerManageDAO.selectFeePayerUnpaidListCount(queryParam);
+        SupportFeePayerUnpaidListResponse response = new SupportFeePayerUnpaidListResponse();
+        response.setData(supportFeePayerManageDAO.selectFeePayerUnpaidList(queryParam));
+        response.setRecordsTotal(totalCount);
+        response.setRecordsFiltered(totalCount);
+        return response;
     }
 
     @Override
@@ -217,7 +255,7 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     public SupportFeePayerExcelListResponse selectFeePayerExcelList(SupportFeePayerListRequest request) {
         SupportFeePayerListRequest actualRequest = request != null ? request : new SupportFeePayerListRequest();
         SupportFeePayerExcelListResponse response = new SupportFeePayerExcelListResponse();
-        response.setData(supportFeePayerManageDAO.selectFeePayerList(actualRequest));
+        response.setData(supportFeePayerManageDAO.selectFeePayerExcelList(actualRequest));
         response.setResult("00");
         return response;
     }
@@ -851,6 +889,52 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
             return BigDecimal.ZERO;
         }
         return new BigDecimal(v.replace(",", ""));
+    }
+
+    private static SupportFeePayerListRequest buildFeePayerListQueryParam(SupportFeePayerListRequest request) {
+        SupportFeePayerListRequest src = request != null ? request : new SupportFeePayerListRequest();
+        SupportFeePayerListRequest queryParam = new SupportFeePayerListRequest();
+        queryParam.setReqDateFrom(src.getReqDateFrom());
+        queryParam.setReqDateTo(src.getReqDateTo());
+        queryParam.setUserNm(src.getUserNm());
+        queryParam.setAddress(src.getAddress());
+        queryParam.setStartIndex(src.getStartIndex());
+        queryParam.setLengthPage(src.getLengthPage());
+        queryParam.setStart(src.getStart());
+        queryParam.setLength(src.getLength());
+        applyPagingForSql(queryParam);
+        return queryParam;
+    }
+
+    /**
+     * MyBatis LIMIT 절용 페이징 정수 보정.
+     * {@code #{} } 바인딩이 null이면 MySQL에서 LIMIT가 무시되어 전체 행이 조회될 수 있어,
+     * 서비스에서 기본값 적용 후 {@code ${}} 치환용으로 재설정한다.
+     */
+    private static void applyPagingForSql(SupportFeePayerListRequest request) {
+        request.setDefaultPaging();
+        request.setStartIndex(sanitizePagingStart(request.getStartIndex()));
+        request.setLengthPage(sanitizePagingLength(request.getLengthPage()));
+    }
+
+    private static void applyPagingForSql(SupportFeePayerUnpaidListRequest request) {
+        request.setDefaultPaging();
+        request.setStartIndex(sanitizePagingStart(request.getStartIndex()));
+        request.setLengthPage(sanitizePagingLength(request.getLengthPage()));
+    }
+
+    private static int sanitizePagingStart(Integer startIndex) {
+        if (startIndex == null || startIndex < 0) {
+            return 0;
+        }
+        return startIndex;
+    }
+
+    private static int sanitizePagingLength(Integer lengthPage) {
+        if (lengthPage == null || lengthPage <= 0) {
+            return 15;
+        }
+        return Math.min(lengthPage, 500);
     }
 
     private static String trimToEmpty(String s) {

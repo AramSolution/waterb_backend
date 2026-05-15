@@ -18,6 +18,7 @@ import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedCostUpda
 import arami.adminWeb.support.service.dto.request.SupportFeePayerArtitedInsertRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerCostCalcRequest;
 import arami.adminWeb.support.service.dto.request.SupportFeePayerListRequest;
+import arami.adminWeb.support.service.dto.request.SupportFeePayerUnpaidListRequest;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailCalculationResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailDataResponse;
 import arami.adminWeb.support.service.dto.response.SupportFeePayerDetailItemResponse;
@@ -218,8 +219,31 @@ public class SupportFeePayerManageDAO extends EgovAbstractMapper {
         return update("supportFeePayerManageDAO.updateArtitedPaySta", request);
     }
 
+    public int selectFeePayerListCount(SupportFeePayerListRequest request) {
+        Integer count = selectOne("supportFeePayerManageDAO.selectFeePayerListCount", request);
+        return count != null ? count : 0;
+    }
+
     public List<SupportFeePayerListItemResponse> selectFeePayerList(SupportFeePayerListRequest request) {
-        List<?> raw = selectList("supportFeePayerManageDAO.selectFeePayerList", request);
+        return selectFeePayerListByStatement("supportFeePayerManageDAO.selectFeePayerList", request);
+    }
+
+    public List<SupportFeePayerListItemResponse> selectFeePayerExcelList(SupportFeePayerListRequest request) {
+        return selectFeePayerListByStatement("supportFeePayerManageDAO.selectFeePayerExcelList", request);
+    }
+
+    public int selectFeePayerUnpaidListCount(SupportFeePayerUnpaidListRequest request) {
+        Integer count = selectOne("supportFeePayerManageDAO.selectFeePayerUnpaidListCount", request);
+        return count != null ? count : 0;
+    }
+
+    public List<SupportFeePayerListItemResponse> selectFeePayerUnpaidList(SupportFeePayerUnpaidListRequest request) {
+        return selectFeePayerListByStatement("supportFeePayerManageDAO.selectFeePayerUnpaidList", request);
+    }
+
+    private List<SupportFeePayerListItemResponse> selectFeePayerListByStatement(
+            String statementId, Object request) {
+        List<?> raw = selectList(statementId, request);
         List<SupportFeePayerListItemResponse> out = new ArrayList<>();
         if (raw == null || raw.isEmpty()) {
             return out;

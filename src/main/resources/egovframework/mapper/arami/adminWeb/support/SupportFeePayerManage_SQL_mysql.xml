@@ -84,7 +84,44 @@
          ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
     </select>
 
-    <!-- ITEM_ID 당 ARTITED SEQ 최대 1건(가장 최신 등록 분)만 목록에 포함 -->
+    <sql id="feePayerListWhere">
+        <if test="reqDateFrom != null and reqDateFrom != ''">
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(#{reqDateFrom}, '%Y-%m-%d')
+        </if>
+        <if test="reqDateTo != null and reqDateTo != ''">
+           AND A1.REQ_DATE &lt;= STR_TO_DATE(#{reqDateTo}, '%Y-%m-%d')
+        </if>
+        <if test="userNm != null and userNm != ''">
+           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{userNm}, '%')
+        </if>
+        <if test="address != null and address != ''">
+           AND (
+                   DECRYPT(A2.ZIP) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES_LOT) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.DETAIL_ADRES) LIKE CONCAT('%', #{address}, '%')
+           )
+        </if>
+    </sql>
+
+    <select id="selectFeePayerListCount" parameterType="SupportFeePayerListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTITED A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTITED
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTITEM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <include refid="feePayerListWhere"/>
+    </select>
+
+    <!-- ITEM_ID 당 ARTITED SEQ 최대 1건(가장 최신 등록 분)만 목록에 포함, 페이징 LIMIT ${startIndex}, ${lengthPage} -->
     <select id="selectFeePayerList" parameterType="SupportFeePayerListRequest" resultType="SupportFeePayerListItemResponse">
         SELECT A1.ITEM_ID AS itemId,
                A1.SEQ AS seq,
@@ -127,24 +164,125 @@
           JOIN ARTITEM A2
             ON A2.ITEM_ID = A1.ITEM_ID
          WHERE 1=1
-        <if test="reqDateFrom != null and reqDateFrom != ''">
-           AND A1.REQ_DATE &gt;= STR_TO_DATE(#{reqDateFrom}, '%Y-%m-%d')
-        </if>
-        <if test="reqDateTo != null and reqDateTo != ''">
-           AND A1.REQ_DATE &lt;= STR_TO_DATE(#{reqDateTo}, '%Y-%m-%d')
-        </if>
-        <if test="userNm != null and userNm != ''">
-           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{userNm}, '%')
-        </if>
-        <if test="address != null and address != ''">
-           AND (
-                   DECRYPT(A2.ZIP) LIKE CONCAT('%', #{address}, '%')
-                OR DECRYPT(A2.ADRES_LOT) LIKE CONCAT('%', #{address}, '%')
-                OR DECRYPT(A2.ADRES) LIKE CONCAT('%', #{address}, '%')
-                OR DECRYPT(A2.DETAIL_ADRES) LIKE CONCAT('%', #{address}, '%')
-           )
-        </if>
+        <include refid="feePayerListWhere"/>
          ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+         LIMIT ${startIndex}, ${lengthPage}
+    </select>
+
+    <!-- 엑셀: 목록과 동일 조건, 페이징 없음 -->
+    <select id="selectFeePayerExcelList" parameterType="SupportFeePayerListRequest" resultType="SupportFeePayerListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.WATER_SUM, 0) AS waterSum,
+               COALESCE(A1.WATER_COST, 0) AS waterCost,
+               COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               COALESCE(A1.WATER_PAY, 0) AS waterPay,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTITEP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTITEP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTITED A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTITED
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTITEM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <include refid="feePayerListWhere"/>
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+    </select>
+
+    <select id="selectFeePayerUnpaidListCount" parameterType="SupportFeePayerUnpaidListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTITED A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTITED
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTITEM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE A1.PAY_STA = '01'
+           AND A1.REQ_DATE IS NOT NULL
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d')
+           AND A1.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d'), INTERVAL 1 YEAR)
+    </select>
+
+    <!-- 목록과 동일 구조, PAY_STA='01'(미납)만, baseMonth 연도 전체(REQ_DATE) -->
+    <select id="selectFeePayerUnpaidList" parameterType="SupportFeePayerUnpaidListRequest" resultType="SupportFeePayerListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.WATER_SUM, 0) AS waterSum,
+               COALESCE(A1.WATER_COST, 0) AS waterCost,
+               COALESCE(A1.WATER_VAL, 0) AS waterVal,
+               COALESCE(A1.WATER_PAY, 0) AS waterPay,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTITEP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTITEP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTITED A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTITED
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTITEM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE A1.PAY_STA = '01'
+           AND A1.REQ_DATE IS NOT NULL
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d')
+           AND A1.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d'), INTERVAL 1 YEAR)
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+         LIMIT ${startIndex}, ${lengthPage}
     </select>
 
     <select id="getNextItemId" resultType="string">
