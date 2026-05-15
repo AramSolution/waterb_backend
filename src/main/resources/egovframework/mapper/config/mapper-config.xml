@@ -68,6 +68,9 @@
 		<!-- AdminWeb Support(오수 원인자부담금) DTOs -->
 		<package name="arami.adminWeb.support.service.dto.request"/>
 		<package name="arami.adminWeb.support.service.dto.response"/>
+		<!-- AdminWeb Dashboard DTOs -->
+		<package name="arami.adminWeb.dashboard.service.dto.request"/>
+		<package name="arami.adminWeb.dashboard.service.dto.response"/>
 		<!-- Common Auth DTOs -->
 		<package name="arami.common.auth.service.dto"/>
 	</typeAliases>

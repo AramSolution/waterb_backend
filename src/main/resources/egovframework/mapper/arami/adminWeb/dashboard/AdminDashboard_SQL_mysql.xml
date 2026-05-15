@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="adminDashboardDAO">
+
+	<!--
+		Admin dashboard MyBatis statements.
+		Add <select|insert|update|delete> here; use DTO parameterType/resultType (not egovMap).
+		Result column aliases: UPPER_SNAKE_CASE per backend-rule.mdc.
+	-->
+
+	<!-- 당월/전월: ARTITEP 납부 건수(COUNT)·금액(SUM PAY) 모두 PAY_DAY 구간, ARTITED 미납(PAY_STA=01, REQ_DATE) -->
+	<select id="selectPaymentMonthOverMonthAgg" parameterType="AdminDashboardPaymentMoMRequest"
+			resultType="AdminDashboardPaymentMoMQueryRow">
+		SELECT COALESCE((
+				SELECT COUNT(1)
+				  FROM ARTITEP P1
+				 WHERE P1.PAY_DAY IS NOT NULL
+				   AND P1.PAY_DAY &gt;= STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+				   AND P1.PAY_DAY &lt; DATE_ADD(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+			   ), 0) AS CURR_PAY_CNT,
+			   COALESCE((
+				SELECT COUNT(1)
+				  FROM ARTITEP P2
+				 WHERE P2.PAY_DAY IS NOT NULL
+				   AND P2.PAY_DAY &gt;= DATE_SUB(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+				   AND P2.PAY_DAY &lt; STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+			   ), 0) AS PREV_PAY_CNT,
+			   COALESCE((
+				SELECT SUM(COALESCE(P3.PAY, 0))
+				  FROM ARTITEP P3
+				 WHERE P3.PAY_DAY IS NOT NULL
+				   AND P3.PAY_DAY &gt;= STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+				   AND P3.PAY_DAY &lt; DATE_ADD(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+			   ), 0) AS CURR_PAY_AMT,
+			   COALESCE((
+				SELECT SUM(COALESCE(P4.PAY, 0))
+				  FROM ARTITEP P4
+				 WHERE P4.PAY_DAY IS NOT NULL
+				   AND P4.PAY_DAY &gt;= DATE_SUB(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+				   AND P4.PAY_DAY &lt; STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+			   ), 0) AS PREV_PAY_AMT,
+			   COALESCE((
+				SELECT COUNT(1)
+				  FROM ARTITED D1
+				 WHERE D1.PAY_STA = '01'
+				   AND D1.REQ_DATE IS NOT NULL
+				   AND D1.REQ_DATE &gt;= STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+				   AND D1.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+			   ), 0) AS CURR_UNPAID_CNT,
+			   COALESCE((
+				SELECT COUNT(1)
+				  FROM ARTITED D2
+				 WHERE D2.PAY_STA = '01'
+				   AND D2.REQ_DATE IS NOT NULL
+				   AND D2.REQ_DATE &gt;= DATE_SUB(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+				   AND D2.REQ_DATE &lt; STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+			   ), 0) AS PREV_UNPAID_CNT,
+			   COALESCE((
+				SELECT SUM(GREATEST(COALESCE(D3.WATER_COST, 0) - COALESCE(D3.WATER_PAY, 0), 0))
+				  FROM ARTITED D3
+				 WHERE D3.PAY_STA = '01'
+				   AND D3.REQ_DATE IS NOT NULL
+				   AND D3.REQ_DATE &gt;= STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+				   AND D3.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+			   ), 0) AS CURR_UNPAID_AMT,
+			   COALESCE((
+				SELECT SUM(GREATEST(COALESCE(D4.WATER_COST, 0) - COALESCE(D4.WATER_PAY, 0), 0))
+				  FROM ARTITED D4
+				 WHERE D4.PAY_STA = '01'
+				   AND D4.REQ_DATE IS NOT NULL
+				   AND D4.REQ_DATE &gt;= DATE_SUB(STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+				   AND D4.REQ_DATE &lt; STR_TO_DATE(CONCAT(#{baseMonth}, '-01'), '%Y-%m-%d')
+			   ), 0) AS PREV_UNPAID_AMT
+	</select>
+
+</mapper>

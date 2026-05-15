@@ -102,6 +102,8 @@ public class EgovConfigAppMapper {
 			"arami.adminWeb.banner.service.dto.response," +
 			"arami.adminWeb.support.service.dto.request," +
 			"arami.adminWeb.support.service.dto.response," +
+			"arami.adminWeb.dashboard.service.dto.request," +
+			"arami.adminWeb.dashboard.service.dto.response," +
 			"arami.shared.armuser.dto.request," +
 			"arami.shared.armuser.dto.response," +
 			"arami.shared.armchil.dto.request," +
