@@ -253,9 +253,9 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     @Override
     @Transactional(readOnly = true)
     public SupportFeePayerExcelListResponse selectFeePayerExcelList(SupportFeePayerListRequest request) {
-        SupportFeePayerListRequest actualRequest = request != null ? request : new SupportFeePayerListRequest();
+        SupportFeePayerListRequest queryParam = buildFeePayerListSearchParam(request);
         SupportFeePayerExcelListResponse response = new SupportFeePayerExcelListResponse();
-        response.setData(supportFeePayerManageDAO.selectFeePayerExcelList(actualRequest));
+        response.setData(supportFeePayerManageDAO.selectFeePayerExcelList(queryParam));
         response.setResult("00");
         return response;
     }
@@ -892,18 +892,41 @@ public class SupportFeePayerManageServiceImpl extends EgovAbstractServiceImpl im
     }
 
     private static SupportFeePayerListRequest buildFeePayerListQueryParam(SupportFeePayerListRequest request) {
+        SupportFeePayerListRequest queryParam = buildFeePayerListSearchParam(request);
+        queryParam.setStartIndex(request != null ? request.getStartIndex() : null);
+        queryParam.setLengthPage(request != null ? request.getLengthPage() : null);
+        queryParam.setStart(request != null ? request.getStart() : null);
+        queryParam.setLength(request != null ? request.getLength() : null);
+        applyPagingForSql(queryParam);
+        return queryParam;
+    }
+
+    private static SupportFeePayerListRequest buildFeePayerListSearchParam(SupportFeePayerListRequest request) {
         SupportFeePayerListRequest src = request != null ? request : new SupportFeePayerListRequest();
         SupportFeePayerListRequest queryParam = new SupportFeePayerListRequest();
         queryParam.setReqDateFrom(src.getReqDateFrom());
         queryParam.setReqDateTo(src.getReqDateTo());
         queryParam.setUserNm(src.getUserNm());
         queryParam.setAddress(src.getAddress());
-        queryParam.setStartIndex(src.getStartIndex());
-        queryParam.setLengthPage(src.getLengthPage());
-        queryParam.setStart(src.getStart());
-        queryParam.setLength(src.getLength());
-        applyPagingForSql(queryParam);
+        queryParam.setPaySta(normalizeListPayStaFilter(src.getPaySta()));
         return queryParam;
+    }
+
+    /**
+     * 목록/엑셀 납부상태 필터: null·빈값·00 → 전체(필터 없음), 01·02만 DB 조건 적용.
+     */
+    private static String normalizeListPayStaFilter(String paySta) {
+        if (paySta == null) {
+            return null;
+        }
+        String v = paySta.trim();
+        if (v.isEmpty() || "00".equals(v)) {
+            return null;
+        }
+        if ("01".equals(v) || "02".equals(v)) {
+            return v;
+        }
+        throw new IllegalArgumentException("납부상태(paySta)는 00(전체), 01(미납), 02(완납)만 가능합니다.");
     }
 
     /**

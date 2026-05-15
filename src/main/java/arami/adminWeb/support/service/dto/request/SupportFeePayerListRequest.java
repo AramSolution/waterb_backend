@@ -26,6 +26,11 @@ public class SupportFeePayerListRequest {
     /** 주소 검색(ZIP, ADRES_LOT, ADRES, DETAIL_ADRES 대상) */
     private String address;
 
+    /**
+     * 납부상태 필터. 미입력·{@code 00} = 전체, {@code 01} = 미납, {@code 02} = 완납(납부완료).
+     */
+    private String paySta;
+
     /** 페이징 시작 위치(0부터). 미입력 시 0 (DataTables 호환: {@code start}) */
     private Integer startIndex;
 

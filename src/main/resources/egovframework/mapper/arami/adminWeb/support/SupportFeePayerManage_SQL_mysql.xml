@@ -102,6 +102,9 @@
                 OR DECRYPT(A2.DETAIL_ADRES) LIKE CONCAT('%', #{address}, '%')
            )
         </if>
+        <if test="paySta != null and paySta != '' and paySta != '00'">
+           AND A1.PAY_STA = #{paySta}
+        </if>
     </sql>
 
     <select id="selectFeePayerListCount" parameterType="SupportFeePayerListRequest" resultType="int">

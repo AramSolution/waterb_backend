@@ -58,6 +58,7 @@ public class SupportFeePayerManageController extends CommonService {
      * - 납부(ARTITEP)는 해당 분 기준 최신 1건(납부일/납부액)만 조회
      * - 납부 이력이 없으면 납부일 null, 납부액 0
      * - 페이징: {@code startIndex}(기본 0), {@code lengthPage}(기본 15)
+     * - 납부상태: {@code paySta} 미입력·{@code 00}=전체, {@code 01}=미납, {@code 02}=완납
      */
     @PostMapping(value = "/list", produces = "application/json;charset=UTF-8")
     public ResponseEntity<SupportFeePayerListResponse> list(@RequestBody(required = false) SupportFeePayerListRequest request) {
@@ -67,6 +68,11 @@ public class SupportFeePayerManageController extends CommonService {
             response.setResult("00");
             response.setMessage(egovMessageSource.getMessage("success.common.select"));
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("support fee-payer list validation: {}", e.getMessage());
+            response.setResult("01");
+            response.setMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             log.error("support fee-payer list error: {}", e.getMessage(), e);
             response.setResult("01");
