@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  지원요금 납부자(수도요금) 관리 — supportFeePayerManageDAO.
+  ARTITEM: 납부자 기본(성명·주소·연락처, ENCRYPT/DECRYPT).
+  ARTITED: 등록분(SEQ) 헤더 — 신청일·납부상태·요금 합계.
+  ARTITEC: 산정 상세(SEQ2) — 건물·층·사용량 등.
+  ARTITEP: 납부 내역(SEQ2) — 납부일·금액.
+  목록/엑셀/미납: ITEM_ID당 ARTITED MAX(SEQ) 1건. PAY_STA 01=미납, 02=납부완료, 00=전체(조건 제외).
+-->
 <mapper namespace="supportFeePayerManageDAO">
 
+    <!-- 상세(기본정보): ARTITEM 1건, ITEM_ID -->
     <select id="selectFeePayerBasicDetailByItemId" parameterType="string" resultType="SupportFeePayerDetailDataResponse">
         SELECT A1.ITEM_ID AS itemId,
                COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
@@ -14,6 +23,7 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <!-- 납부관리 상세(기본정보): ARTITEM 1건 — selectFeePayerBasicDetailByItemId와 동일 조회 -->
     <select id="selectFeePayerPaymentBasicDetailByItemId" parameterType="string" resultType="SupportFeePayerPaymentDetailDataResponse">
         SELECT A1.ITEM_ID AS itemId,
                COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
@@ -26,6 +36,7 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <!-- 상세: ITEM_ID별 ARTITED 등록분 목록(SEQ 오름차순) -->
     <select id="selectFeePayerDetailListByItemId" parameterType="string" resultType="SupportFeePayerDetailItemResponse">
         SELECT A1.SEQ AS seq,
                COALESCE(A1.PAY_STA, '') AS paySta,
@@ -42,6 +53,7 @@
          ORDER BY A1.SEQ ASC
     </select>
 
+    <!-- 상세: ITEM_ID 전체 ARTITEC 산정 행 + ARMBULD 건물명 -->
     <select id="selectFeePayerCalculationListByItemId" parameterType="string" resultType="SupportFeePayerDetailCalculationResponse">
         SELECT A1.SEQ AS seq,
                A1.SEQ2 AS seq2,
@@ -61,6 +73,7 @@
          ORDER BY A1.SEQ ASC, A1.SEQ2 ASC
     </select>
 
+    <!-- 납부관리 상세: ARTITED + LEFT JOIN ARTITEP(등록분·납부행 펼침) -->
     <select id="selectFeePayerPaymentDetailRowsByItemId" parameterType="string" resultType="SupportFeePayerPaymentDetailRowResponse">
         SELECT A1.SEQ AS seq,
                COALESCE(A1.PAY_STA, '') AS paySta,
@@ -84,6 +97,7 @@
          ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
     </select>
 
+    <!-- 목록/엑셀 공통 WHERE: 신청일·성명·주소·납부상태(paySta 00=미적용) -->
     <sql id="feePayerListWhere">
         <if test="reqDateFrom != null and reqDateFrom != ''">
            AND A1.REQ_DATE &gt;= STR_TO_DATE(#{reqDateFrom}, '%Y-%m-%d')
@@ -107,6 +121,7 @@
         </if>
     </sql>
 
+    <!-- 납부자 목록 건수: ITEM_ID당 최신 ARTITED(SEQ MAX) 1건 기준 -->
     <select id="selectFeePayerListCount" parameterType="SupportFeePayerListRequest" resultType="int">
         SELECT COUNT(1)
           FROM ARTITED A1
@@ -219,6 +234,7 @@
          ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
     </select>
 
+    <!-- 미납 목록 건수: 최신 ARTITED + PAY_STA='01', baseMonth 연도 REQ_DATE -->
     <select id="selectFeePayerUnpaidListCount" parameterType="SupportFeePayerUnpaidListRequest" resultType="int">
         SELECT COUNT(1)
           FROM ARTITED A1
@@ -288,11 +304,13 @@
          LIMIT ${startIndex}, ${lengthPage}
     </select>
 
+    <!-- ITEM_ID 채번: ITM_ + 16자리 순번(ARTITEM MAX) -->
     <select id="getNextItemId" resultType="string">
         SELECT CONCAT('ITM_', LPAD(COALESCE(SUBSTRING(MAX(A1.ITEM_ID), 5, 16), 0) + 1, 16, '0')) AS ITEM_ID
           FROM ARTITEM A1
     </select>
 
+    <!-- ARTITEM 신규 등록(개인정보 ENCRYPT) -->
     <insert id="insertArtitem" parameterType="SupportFeePayerArtitemInsertRequest">
         INSERT INTO ARTITEM (
             ITEM_ID,
@@ -319,17 +337,20 @@
         )
     </insert>
 
+    <!-- ARTITEM 존재 여부 -->
     <select id="countArtitemByItemId" parameterType="string" resultType="int">
         SELECT COUNT(1)
           FROM ARTITEM A1
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <!-- ARTITEM 삭제(ITEM_ID) -->
     <delete id="deleteArtitemByItemId" parameterType="string">
         DELETE FROM ARTITEM
          WHERE ITEM_ID = #{_parameter}
     </delete>
 
+    <!-- ARTITEM 기본정보 수정 -->
     <update id="updateArtitemBasic" parameterType="SupportFeePayerArtitemInsertRequest">
         UPDATE ARTITEM
            SET USER_NM = ENCRYPT(#{userNm}),
@@ -343,12 +364,14 @@
          WHERE ITEM_ID = #{itemId}
     </update>
 
+    <!-- ARTITED 다음 SEQ(ITEM_ID별 MAX+1) -->
     <select id="getNextArtitedSeq" parameterType="string" resultType="int">
         SELECT COALESCE(MAX(A1.SEQ), 0) + 1
           FROM ARTITED A1
          WHERE A1.ITEM_ID = #{_parameter}
     </select>
 
+    <!-- ITEM_ID 소속 ARTITED SEQ 목록 -->
     <select id="selectArtitedSeqsByItemId" parameterType="string" resultType="int">
         SELECT A1.SEQ
           FROM ARTITED A1
@@ -356,6 +379,7 @@
          ORDER BY A1.SEQ ASC
     </select>
 
+    <!-- ITEM_ID 내 미납(PAY_STA='01') 등록분 건수 -->
     <select id="countUnpaidArtitedByItemId" parameterType="string" resultType="int">
         SELECT COUNT(1)
           FROM ARTITED A1
@@ -371,6 +395,7 @@
            AND A1.SEQ = #{seq}
     </select>
 
+    <!-- ARTITED 등록분 신규 INSERT -->
     <insert id="insertArtited" parameterType="SupportFeePayerArtitedInsertRequest">
         INSERT INTO ARTITED (
             ITEM_ID,
@@ -437,12 +462,14 @@
             CHG_DATE = NOW()
     </insert>
 
+    <!-- ARTITEC: ITEM_ID+SEQ 하위 산정 행 전체 삭제(재저장 전) -->
     <delete id="deleteArtitecByItemIdAndSeq">
         DELETE FROM ARTITEC
          WHERE ITEM_ID = #{itemId}
            AND SEQ = #{seq}
     </delete>
 
+    <!-- ARTITEC 다음 SEQ2(ITEM_ID, SEQ별 MAX+1) -->
     <select id="getNextArtitecSeq2" resultType="int">
         SELECT COALESCE(MAX(A1.SEQ2), 0) + 1
           FROM ARTITEC A1
@@ -450,6 +477,7 @@
            AND A1.SEQ = #{seq}
     </select>
 
+    <!-- ARTITEP 다음 SEQ2(ITEM_ID, SEQ별 MAX+1) -->
     <select id="getNextArtitepSeq2" resultType="int">
         SELECT COALESCE(MAX(A1.SEQ2), 0) + 1
           FROM ARTITEP A1
@@ -457,6 +485,7 @@
            AND A1.SEQ = #{seq}
     </select>
 
+    <!-- ARTITEC SEQ2 목록(동기화·삭제 대상 조회) -->
     <select id="selectArtitecSeq2sByItemIdAndSeq" resultType="int">
         SELECT A1.SEQ2
           FROM ARTITEC A1
@@ -465,6 +494,7 @@
          ORDER BY A1.SEQ2 ASC
     </select>
 
+    <!-- ARTITEP SEQ2 목록 -->
     <select id="selectArtitepSeq2sByItemIdAndSeq" resultType="int">
         SELECT A1.SEQ2
           FROM ARTITEP A1
@@ -473,6 +503,7 @@
          ORDER BY A1.SEQ2 ASC
     </select>
 
+    <!-- ARTITEC 산정 행 수정(PK: ITEM_ID, SEQ, SEQ2) -->
     <update id="updateArtitec" parameterType="SupportFeePayerArtitecInsertRequest">
         UPDATE ARTITEC
            SET FLOOR = #{floor},
@@ -490,6 +521,7 @@
            AND SEQ2 = #{seq2}
     </update>
 
+    <!-- ARTITEC 1행 삭제 -->
     <delete id="deleteArtitecByItemIdAndSeqAndSeq2">
         DELETE FROM ARTITEC
          WHERE ITEM_ID = #{itemId}
@@ -497,6 +529,7 @@
            AND SEQ2 = #{seq2}
     </delete>
 
+    <!-- ARTITEP 납부 1행 삭제 -->
     <delete id="deleteArtitepByItemIdAndSeqAndSeq2">
         DELETE FROM ARTITEP
          WHERE ITEM_ID = #{itemId}
@@ -504,22 +537,26 @@
            AND SEQ2 = #{seq2}
     </delete>
 
+    <!-- ARTITED 등록분 1건 삭제 -->
     <delete id="deleteArtitedByItemIdAndSeq">
         DELETE FROM ARTITED
          WHERE ITEM_ID = #{itemId}
            AND SEQ = #{seq}
     </delete>
 
+    <!-- ARTITEP: 등록분(SEQ) 소속 납부 내역 전체 삭제 -->
     <delete id="deleteArtitepByItemIdAndSeq">
         DELETE FROM ARTITEP
          WHERE ITEM_ID = #{itemId}
            AND SEQ = #{seq}
     </delete>
 
+    <!-- 요금 산정 DB 함수 f_cost 호출 결과 -->
     <select id="callCostProc" parameterType="SupportFeePayerCostCalcRequest" resultType="string">
         SELECT f_cost(#{fixedGubun}, #{itemId}, #{seq}) AS COST_RESULT
     </select>
 
+    <!-- ARTITED 요금 반영: WATER_COST/VAL + ARTITEC 사용량 합(WATER_SUM) -->
     <update id="updateArtitedCost" parameterType="SupportFeePayerArtitedCostUpdateRequest">
         UPDATE ARTITED
            SET WATER_COST = #{waterCost},
@@ -536,6 +573,7 @@
            AND SEQ = #{seq}
     </update>
 
+    <!-- ARTITEC WATER_VOL 합(등록분별) -->
     <select id="selectArtitecWaterSum" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(COALESCE(T1.WATER_VOL, 0)), 0)
           FROM ARTITEC T1
@@ -543,6 +581,7 @@
            AND T1.SEQ = #{seq}
     </select>
 
+    <!-- ARTITEC 산정 행 INSERT -->
     <insert id="insertArtitec" parameterType="SupportFeePayerArtitecInsertRequest">
         INSERT INTO ARTITEC (
             ITEM_ID,
@@ -577,6 +616,7 @@
         )
     </insert>
 
+    <!-- ARTITEP 납부 내역 INSERT -->
     <insert id="insertArtitep" parameterType="SupportFeePayerArtitepSaveRequest">
         INSERT INTO ARTITEP (
             ITEM_ID,
@@ -601,6 +641,7 @@
         )
     </insert>
 
+    <!-- ARTITEP 납부 내역 수정 -->
     <update id="updateArtitep" parameterType="SupportFeePayerArtitepSaveRequest">
         UPDATE ARTITEP
            SET PAY_DAY = #{payDay},
@@ -613,6 +654,7 @@
            AND SEQ2 = #{seq2}
     </update>
 
+    <!-- ARTITED 납부상태(PAY_STA) 수동 갱신 -->
     <update id="updateArtitedPaySta" parameterType="SupportFeePayerArtitedPayStaUpdateRequest">
         UPDATE ARTITED
            SET PAY_STA = #{paySta},
@@ -622,6 +664,7 @@
            AND SEQ = #{seq}
     </update>
 
+    <!-- ITEM_ID 전체 ARTITED: WATER_PAY = 해당 SEQ ARTITEP.PAY 합 -->
     <update id="updateArtitedWaterPayByItemId" parameterType="string">
         UPDATE ARTITED A1
            SET A1.WATER_PAY = (
@@ -634,7 +677,7 @@
          WHERE A1.ITEM_ID = #{_parameter}
     </update>
 
-    <!-- After WATER_PAY is refreshed from ARTITEP sums: PAY_STA 02 if paid total >= WATER_COST, else 01 (when WATER_COST is set). -->
+    <!-- WATER_PAY 갱신 후 PAY_STA 동기화: 납부합>=WATER_COST이면 02, WATER_COST NULL이면 유지, 아니면 01 -->
     <update id="updateArtitedPayStaByWaterPayVsCost" parameterType="SupportFeePayerArtitedPayStaSyncByWaterParam">
         UPDATE ARTITED A1
            SET A1.PAY_STA = CASE
