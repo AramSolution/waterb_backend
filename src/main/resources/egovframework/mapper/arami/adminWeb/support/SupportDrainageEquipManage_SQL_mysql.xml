@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  배수설비관리 — supportDrainageEquipManageDAO.
+  ARTEQUM: 기본정보(성명·주소·연락처, ENCRYPT/DECRYPT).
+  ARTEQUD: 등록분(SEQ) — 등록일·착공일·준공일·배수설비금액 등.
+  ARTEQUP: 납부 내역(SEQ2) — 등록/수정 API에서는 detail 삭제 시 함께 제거.
+-->
+<mapper namespace="supportDrainageEquipManageDAO">
+
+    <!-- ITEM_ID 채번: EQU_ + 16자리 순번(ARTEQUM MAX) -->
+    <select id="getNextItemId" resultType="string">
+        SELECT CONCAT('EQU_', LPAD(COALESCE(SUBSTRING(MAX(A1.ITEM_ID), 5, 16), 0) + 1, 16, '0')) AS ITEM_ID
+          FROM ARTEQUM A1
+    </select>
+
+    <!-- ARTEQUM 신규 등록(개인정보 ENCRYPT) -->
+    <insert id="insertArtequm" parameterType="SupportDrainageEquipArtequmInsertRequest">
+        INSERT INTO ARTEQUM (
+            ITEM_ID,
+            USER_NM,
+            ZIP,
+            ADRES_LOT,
+            ADRES,
+            DETAIL_ADRES,
+            USR_TELNO,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            ENCRYPT(#{userNm}),
+            ENCRYPT(#{zip}),
+            ENCRYPT(#{adresLot}),
+            ENCRYPT(#{adres}),
+            ENCRYPT(#{detailAdres}),
+            ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <!-- ARTEQUM 존재 여부 -->
+    <select id="countArtequmByItemId" parameterType="string" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTEQUM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <!-- ARTEQUM 기본정보 수정 -->
+    <update id="updateArtequmBasic" parameterType="SupportDrainageEquipArtequmInsertRequest">
+        UPDATE ARTEQUM
+           SET USER_NM = ENCRYPT(#{userNm}),
+               ZIP = ENCRYPT(#{zip}),
+               ADRES_LOT = ENCRYPT(#{adresLot}),
+               ADRES = ENCRYPT(#{adres}),
+               DETAIL_ADRES = ENCRYPT(#{detailAdres}),
+               USR_TELNO = ENCRYPT(REPLACE(#{usrTelno}, '-', '')),
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+    </update>
+
+    <!-- ARTEQUD 다음 SEQ(ITEM_ID별 MAX+1) -->
+    <select id="getNextArtequdSeq" parameterType="string" resultType="int">
+        SELECT COALESCE(MAX(A1.SEQ), 0) + 1
+          FROM ARTEQUD A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <!-- ITEM_ID 소속 ARTEQUD SEQ 목록 -->
+    <select id="selectArtequdSeqsByItemId" parameterType="string" resultType="int">
+        SELECT A1.SEQ
+          FROM ARTEQUD A1
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC
+    </select>
+
+    <!-- ITEM_ID 내 미납(PAY_STA='01') 등록분 건수 -->
+    <select id="countUnpaidArtequdByItemId" parameterType="string" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTEQUD A1
+         WHERE A1.ITEM_ID = #{_parameter}
+           AND A1.PAY_STA = '01'
+    </select>
+
+    <!-- PK(ITEM_ID, SEQ) 충돌 시 상세 컬럼 갱신 -->
+    <insert id="upsertArtequd" parameterType="SupportDrainageEquipArtequdInsertRequest">
+        INSERT INTO ARTEQUD (
+            ITEM_ID,
+            SEQ,
+            PAY_STA,
+            REQ_DATE,
+            START_DATE,
+            PLAN_DATE,
+            COMP_DATE,
+            AGENCY,
+            EQUIP_COST,
+            EQUIP_PAY,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{paySta},
+            #{reqDate},
+            #{startDate},
+            #{planDate},
+            #{compDate},
+            #{agency},
+            #{equipCost},
+            #{equipPay},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            PAY_STA = VALUES(PAY_STA),
+            REQ_DATE = VALUES(REQ_DATE),
+            START_DATE = VALUES(START_DATE),
+            PLAN_DATE = VALUES(PLAN_DATE),
+            COMP_DATE = VALUES(COMP_DATE),
+            AGENCY = VALUES(AGENCY),
+            EQUIP_COST = VALUES(EQUIP_COST),
+            EQUIP_PAY = VALUES(EQUIP_PAY),
+            CHG_USER_ID = VALUES(CHG_USER_ID),
+            CHG_DATE = NOW()
+    </insert>
+
+    <!-- ARTEQUP: ITEM_ID+SEQ 하위 납부 행 전체 삭제 -->
+    <delete id="deleteArtequpByItemIdAndSeq">
+        DELETE FROM ARTEQUP
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </delete>
+
+    <!-- ARTEQUD: ITEM_ID+SEQ 상세 1건 삭제 -->
+    <delete id="deleteArtequdByItemIdAndSeq">
+        DELETE FROM ARTEQUD
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </delete>
+
+    <!-- ARTEQUM 삭제(ITEM_ID) -->
+    <delete id="deleteArtequmByItemId" parameterType="string">
+        DELETE FROM ARTEQUM
+         WHERE ITEM_ID = #{_parameter}
+    </delete>
+
+    <!-- 수정/삭제 가능 여부: 등록된 PAY_STA 기준 (미납 '01'만 허용) -->
+    <select id="selectArtequdPayStaByItemIdAndSeq" resultType="string">
+        SELECT COALESCE(A1.PAY_STA, '')
+          FROM ARTEQUD A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+    </select>
+
+    <!-- 상세(기본정보): ARTEQUM 1건 -->
+    <select id="selectDrainageEquipBasicDetailByItemId" parameterType="string" resultType="SupportDrainageEquipDetailDataResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A1.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A1.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A1.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A1.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(DECRYPT(A1.USR_TELNO), '') AS usrTelno
+          FROM ARTEQUM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <!-- 납부관리 상세(기본정보): ARTEQUM 1건 -->
+    <select id="selectDrainageEquipPaymentBasicDetailByItemId" parameterType="string" resultType="SupportDrainageEquipPaymentDetailDataResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               COALESCE(DECRYPT(A1.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A1.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A1.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A1.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A1.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(DECRYPT(A1.USR_TELNO), '') AS usrTelno
+          FROM ARTEQUM A1
+         WHERE A1.ITEM_ID = #{_parameter}
+    </select>
+
+    <!-- 상세: ITEM_ID별 ARTEQUD 등록분 목록 -->
+    <select id="selectDrainageEquipDetailListByItemId" parameterType="string" resultType="SupportDrainageEquipDetailItemResponse">
+        SELECT A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               DATE_FORMAT(A1.START_DATE, '%Y-%m-%d') AS startDate,
+               DATE_FORMAT(A1.PLAN_DATE, '%Y-%m-%d') AS planDate,
+               DATE_FORMAT(A1.COMP_DATE, '%Y-%m-%d') AS compDate,
+               COALESCE(A1.AGENCY, '') AS agency,
+               COALESCE(A1.EQUIP_COST, 0) AS equipCost,
+               COALESCE(A1.EQUIP_PAY, 0) AS equipPay
+          FROM ARTEQUD A1
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC
+    </select>
+
+    <!-- 납부관리 상세: ARTEQUD + LEFT JOIN ARTEQUP -->
+    <select id="selectDrainageEquipPaymentDetailRowsByItemId" parameterType="string" resultType="SupportDrainageEquipPaymentDetailRowResponse">
+        SELECT A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               DATE_FORMAT(A1.START_DATE, '%Y-%m-%d') AS startDate,
+               DATE_FORMAT(A1.PLAN_DATE, '%Y-%m-%d') AS planDate,
+               DATE_FORMAT(A1.COMP_DATE, '%Y-%m-%d') AS compDate,
+               COALESCE(A1.AGENCY, '') AS agency,
+               COALESCE(A1.EQUIP_COST, 0) AS equipCost,
+               COALESCE(A1.EQUIP_PAY, 0) AS equipPay,
+               A2.SEQ2 AS seq2,
+               DATE_FORMAT(A2.PAY_DAY, '%Y-%m-%d') AS payDay,
+               COALESCE(A2.PAY, 0) AS pay,
+               COALESCE(A2.PAY_DESC, '') AS payDesc
+          FROM ARTEQUD A1
+          LEFT JOIN ARTEQUP A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+           AND A2.SEQ = A1.SEQ
+         WHERE A1.ITEM_ID = #{_parameter}
+         ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
+    </select>
+
+    <!-- 목록/엑셀 공통 WHERE -->
+    <sql id="drainageEquipListWhere">
+        <if test="reqDateFrom != null and reqDateFrom != ''">
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(#{reqDateFrom}, '%Y-%m-%d')
+        </if>
+        <if test="reqDateTo != null and reqDateTo != ''">
+           AND A1.REQ_DATE &lt;= STR_TO_DATE(#{reqDateTo}, '%Y-%m-%d')
+        </if>
+        <if test="userNm != null and userNm != ''">
+           AND DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{userNm}, '%')
+        </if>
+        <if test="address != null and address != ''">
+           AND (
+                   DECRYPT(A2.ZIP) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES_LOT) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.ADRES) LIKE CONCAT('%', #{address}, '%')
+                OR DECRYPT(A2.DETAIL_ADRES) LIKE CONCAT('%', #{address}, '%')
+           )
+        </if>
+        <if test="paySta != null and paySta != '' and paySta != '00'">
+           AND A1.PAY_STA = #{paySta}
+        </if>
+    </sql>
+
+    <select id="selectDrainageEquipListCount" parameterType="SupportDrainageEquipListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTEQUD A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTEQUD
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTEQUM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <include refid="drainageEquipListWhere"/>
+    </select>
+
+    <select id="selectDrainageEquipList" parameterType="SupportDrainageEquipListRequest" resultType="SupportDrainageEquipListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.EQUIP_COST, 0) AS equipCost,
+               COALESCE(A1.EQUIP_PAY, 0) AS equipPay,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTEQUP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTEQUP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTEQUD A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTEQUD
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTEQUM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <include refid="drainageEquipListWhere"/>
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+         LIMIT ${startIndex}, ${lengthPage}
+    </select>
+
+    <select id="selectDrainageEquipExcelList" parameterType="SupportDrainageEquipListRequest" resultType="SupportDrainageEquipListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.EQUIP_COST, 0) AS equipCost,
+               COALESCE(A1.EQUIP_PAY, 0) AS equipPay,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTEQUP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTEQUP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTEQUD A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTEQUD
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTEQUM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE 1=1
+        <include refid="drainageEquipListWhere"/>
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+    </select>
+
+    <select id="selectDrainageEquipUnpaidListCount" parameterType="SupportDrainageEquipUnpaidListRequest" resultType="int">
+        SELECT COUNT(1)
+          FROM ARTEQUD A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTEQUD
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTEQUM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE A1.PAY_STA = '01'
+           AND A1.REQ_DATE IS NOT NULL
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d')
+           AND A1.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d'), INTERVAL 1 YEAR)
+    </select>
+
+    <select id="selectDrainageEquipUnpaidList" parameterType="SupportDrainageEquipUnpaidListRequest" resultType="SupportDrainageEquipListItemResponse">
+        SELECT A1.ITEM_ID AS itemId,
+               A1.SEQ AS seq,
+               COALESCE(A1.PAY_STA, '') AS paySta,
+               DATE_FORMAT(A1.REQ_DATE, '%Y-%m-%d') AS reqDate,
+               COALESCE(DECRYPT(A2.USER_NM), '') AS userNm,
+               COALESCE(DECRYPT(A2.ZIP), '') AS zip,
+               COALESCE(DECRYPT(A2.ADRES_LOT), '') AS adresLot,
+               COALESCE(DECRYPT(A2.ADRES), '') AS adres,
+               COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS detailAdres,
+               COALESCE(A1.EQUIP_COST, 0) AS equipCost,
+               COALESCE(A1.EQUIP_PAY, 0) AS equipPay,
+               (
+                   SELECT DATE_FORMAT(P1.PAY_DAY, '%Y-%m-%d')
+                     FROM ARTEQUP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+                    ORDER BY P1.PAY_DAY DESC, P1.SEQ2 DESC
+                    LIMIT 1
+               ) AS payDay,
+               COALESCE((
+                   SELECT P2.PAY
+                     FROM ARTEQUP P2
+                    WHERE P2.ITEM_ID = A1.ITEM_ID
+                      AND P2.SEQ = A1.SEQ
+                    ORDER BY P2.PAY_DAY DESC, P2.SEQ2 DESC
+                    LIMIT 1
+               ), 0) AS pay
+          FROM ARTEQUD A1
+          INNER JOIN (
+               SELECT ITEM_ID,
+                      MAX(SEQ) AS MAX_SEQ
+                 FROM ARTEQUD
+                GROUP BY ITEM_ID
+               ) AL
+            ON AL.ITEM_ID = A1.ITEM_ID
+           AND AL.MAX_SEQ = A1.SEQ
+          JOIN ARTEQUM A2
+            ON A2.ITEM_ID = A1.ITEM_ID
+         WHERE A1.PAY_STA = '01'
+           AND A1.REQ_DATE IS NOT NULL
+           AND A1.REQ_DATE &gt;= STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d')
+           AND A1.REQ_DATE &lt; DATE_ADD(STR_TO_DATE(CONCAT(SUBSTRING(#{baseMonth}, 1, 4), '-01-01'), '%Y-%m-%d'), INTERVAL 1 YEAR)
+         ORDER BY A1.REQ_DATE DESC, A1.ITEM_ID DESC, A1.SEQ DESC
+         LIMIT ${startIndex}, ${lengthPage}
+    </select>
+
+    <!-- ARTEQUP 다음 SEQ2(ITEM_ID, SEQ별 MAX+1) -->
+    <select id="getNextArtequpSeq2" resultType="int">
+        SELECT COALESCE(MAX(A1.SEQ2), 0) + 1
+          FROM ARTEQUP A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+    </select>
+
+    <select id="selectArtequpSeq2sByItemIdAndSeq" resultType="int">
+        SELECT A1.SEQ2
+          FROM ARTEQUP A1
+         WHERE A1.ITEM_ID = #{itemId}
+           AND A1.SEQ = #{seq}
+         ORDER BY A1.SEQ2 ASC
+    </select>
+
+    <insert id="insertArtequp" parameterType="SupportDrainageEquipArtequpSaveRequest">
+        INSERT INTO ARTEQUP (
+            ITEM_ID,
+            SEQ,
+            SEQ2,
+            PAY_DAY,
+            PAY,
+            PAY_DESC,
+            CHG_USER_ID,
+            CRT_DATE,
+            CHG_DATE
+        ) VALUES (
+            #{itemId},
+            #{seq},
+            #{seq2},
+            #{payDay},
+            #{pay},
+            #{payDesc},
+            #{chgUserId},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="updateArtequp" parameterType="SupportDrainageEquipArtequpSaveRequest">
+        UPDATE ARTEQUP
+           SET PAY_DAY = #{payDay},
+               PAY = #{pay},
+               PAY_DESC = #{payDesc},
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </update>
+
+    <delete id="deleteArtequpByItemIdAndSeqAndSeq2">
+        DELETE FROM ARTEQUP
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+           AND SEQ2 = #{seq2}
+    </delete>
+
+    <update id="updateArtequdPaySta" parameterType="SupportDrainageEquipArtequdPayStaUpdateRequest">
+        UPDATE ARTEQUD
+           SET PAY_STA = #{paySta},
+               CHG_USER_ID = #{chgUserId},
+               CHG_DATE = NOW()
+         WHERE ITEM_ID = #{itemId}
+           AND SEQ = #{seq}
+    </update>
+
+    <!-- ITEM_ID 전체 ARTEQUD: EQUIP_PAY = 해당 SEQ ARTEQUP.PAY 합 -->
+    <update id="updateArtequdEquipPayByItemId" parameterType="string">
+        UPDATE ARTEQUD A1
+           SET A1.EQUIP_PAY = (
+                   SELECT COALESCE(SUM(COALESCE(P1.PAY, 0)), 0)
+                     FROM ARTEQUP P1
+                    WHERE P1.ITEM_ID = A1.ITEM_ID
+                      AND P1.SEQ = A1.SEQ
+               ),
+               A1.CHG_DATE = NOW()
+         WHERE A1.ITEM_ID = #{_parameter}
+    </update>
+
+    <!-- EQUIP_PAY 갱신 후 PAY_STA 동기화: 납부합>=EQUIP_COST이면 02, EQUIP_COST NULL이면 유지, 아니면 01 -->
+    <update id="updateArtequdPayStaByEquipPayVsCost" parameterType="SupportDrainageEquipArtequdPayStaSyncParam">
+        UPDATE ARTEQUD A1
+           SET A1.PAY_STA = CASE
+                   WHEN A1.EQUIP_COST IS NULL THEN A1.PAY_STA
+                   WHEN COALESCE(A1.EQUIP_PAY, 0) &gt;= COALESCE(A1.EQUIP_COST, 0) THEN '02'
+                   ELSE '01'
+               END,
+               A1.CHG_USER_ID = #{chgUserId},
+               A1.CHG_DATE = NOW()
+         WHERE A1.ITEM_ID = #{itemId}
+    </update>
+
+</mapper>
