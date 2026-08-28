@@ -7,7 +7,7 @@ services:
     container_name: waterb_backend
     restart: unless-stopped
     ports:
-      - "9443:8443"
+      - "8080:8080"
     networks:
       - app_network
     environment:
@@ -15,14 +15,26 @@ services:
       JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC"
     volumes:
       - app_files:/home/aram
-      - /home/aram/vol/ssl:/app/ssl
       - /home/aram/vol/files:/home/aram/test
     healthcheck:
-      test: ["CMD", "curl", "-fk", "https://localhost:8443/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # Cloudflare Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - app_network
+    depends_on:
+      - app
 
 volumes:
   app_files:
