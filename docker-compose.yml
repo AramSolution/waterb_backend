@@ -10,6 +10,7 @@ services:
       - "8080:8080"
     networks:
       - app_network
+      - water_cf_net
     environment:
       SPRING_PROFILES_ACTIVE: prod
       JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC"
@@ -33,6 +34,7 @@ services:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
     networks:
       - app_network
+      - water_cf_net
     depends_on:
       - app
 
@@ -43,3 +45,8 @@ volumes:
 networks:
   app_network:
     driver: bridge
+  # waterb_frontend와 공유하는 외부 네트워크. cloudflared가 같은 터널에 붙은
+  # frontend 컨테이너(www.gimjewater.kr 공개 호스트명)에도 도달할 수 있도록 연결.
+  # 사전에 `docker network create water_cf_net` 필요 (한 번만).
+  water_cf_net:
+    external: true
