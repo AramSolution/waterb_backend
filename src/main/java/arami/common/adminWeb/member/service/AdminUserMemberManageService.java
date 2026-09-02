@@ -237,4 +237,8 @@ public interface AdminUserMemberManageService {
 	 * @throws Exception
 	 */
 	public int deleteUserMemberAjax(MemberDeleteRequest request) throws Exception;
+
+	public String checkMemberId(Object object) throws Exception;
+
+	public String checkMemberId2(Object object) throws Exception;
 }

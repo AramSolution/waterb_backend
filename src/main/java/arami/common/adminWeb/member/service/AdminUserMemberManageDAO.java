@@ -167,4 +167,12 @@ public class AdminUserMemberManageDAO extends EgovAbstractMapper {
 	public int deleteUserMemberAjax(MemberDeleteRequest request) throws Exception{
 		return update("adminUserMemberManageDAO.deleteUserMemberAjax", request);
 	}
+
+	public String checkMemberId(Object object) throws Exception {
+		return selectOne("adminUserMemberManageDAO.checkMemberId", object);
+	}
+
+	public String checkMemberId2(Object object) throws Exception {
+		return selectOne("adminUserMemberManageDAO.checkMemberId2", object);
+	}
 }

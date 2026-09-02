@@ -1,12 +1,10 @@
 package arami.shared.armuser.service;
 
-import arami.shared.armuser.dto.request.AcademyListForUserRequest;
 import arami.shared.armuser.dto.request.ArmuserDetailRequest;
 import arami.shared.armuser.dto.request.ArmuserDeleteRequest;
 import arami.shared.armuser.dto.request.ArmuserInsertRequest;
 import arami.shared.armuser.dto.request.ArmuserListRequest;
 import arami.shared.armuser.dto.request.ArmuserUpdateRequest;
-import arami.shared.armuser.dto.response.AcademyListForUserItem;
 import arami.shared.armuser.dto.response.ArmuserDTO;
 import arami.shared.armuser.dto.response.ArmuserCrtfcDnValueCheckResponse;
 import arami.shared.armuser.dto.response.ArmuserUserIdCheckResponse;
@@ -23,11 +21,6 @@ public interface ArmuserService {
 
     int selectListCount(ArmuserListRequest request);
 
-    /** 사용자웹 학원조회: 정상 학원(ANR, P) 전부 + 과목(있으면 콤마, 없으면 공백) */
-    List<AcademyListForUserItem> selectAcademyListForUserWeb(AcademyListForUserRequest request);
-
-    int selectAcademyListForUserWebCount(AcademyListForUserRequest request);
-
     /** 엑셀 다운로드용 목록 조회 (검색 조건 적용, 페이징 없음) */
     List<ArmuserDTO> selectExcelList(ArmuserListRequest request);
 
@@ -39,9 +32,6 @@ public interface ArmuserService {
 
     /** 상세 조회 */
     ArmuserDTO selectDetail(ArmuserDetailRequest request);
-
-    /** userWeb 메인(학원)용 학원 상세 조회 */
-    ArmuserDTO selectAcademyMainDetail(ArmuserDetailRequest request);
 
     /** 등록 (esntlId는 서버에서 항상 채번). 실패 시 결과 DTO 반환, 성공 시 null */
     ArmuserResultResponse insertArmuser(ArmuserInsertRequest request);

@@ -90,8 +90,6 @@ public class SecurityConfig {
             "/auth/find-user-id", // 아이디 찾기 (본인인증 DI)
             "/auth/account-recovery/**", // 아이디 찾기 (recoveryToken)
             "/auth/password-reset/**", // 비밀번호 재설정(본인인증)
-            "/auth/oauth/**", // OAuth 로그인 URL 조회 (네이버, 카카오 등)
-            "/OAuth/**", // OAuth 콜백 처리 (네이버, 카카오 등)
             "/file", // 파일 다운로드
             "/etc/**", // 사용자단의 회원약관,회원가입,사용자아이디 중복여부체크 URL허용
 

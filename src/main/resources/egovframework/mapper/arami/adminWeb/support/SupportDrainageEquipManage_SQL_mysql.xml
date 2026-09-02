@@ -196,7 +196,7 @@
                COALESCE(A1.EQUIP_PAY, 0) AS equipPay
           FROM ARTEQUD A1
          WHERE A1.ITEM_ID = #{_parameter}
-         ORDER BY A1.SEQ ASC
+         ORDER BY A1.SEQ DESC
     </select>
 
     <!-- 납부관리 상세: ARTEQUD + LEFT JOIN ARTEQUP -->
@@ -219,7 +219,7 @@
             ON A2.ITEM_ID = A1.ITEM_ID
            AND A2.SEQ = A1.SEQ
          WHERE A1.ITEM_ID = #{_parameter}
-         ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
+         ORDER BY A1.SEQ DESC, A2.SEQ2 ASC
     </select>
 
     <!-- 목록/엑셀 공통 WHERE -->

@@ -23,48 +23,18 @@
 		<!-- AdminWeb Member DTOs -->
 		<package name="arami.common.adminWeb.member.service.dto.request"/>
 		<package name="arami.common.adminWeb.member.service.dto.response"/>
-		<!-- AdminWeb Artprom(지원사업) DTOs -->
-		<package name="arami.adminWeb.artprom.service.dto.request"/>
-		<package name="arami.adminWeb.artprom.service.dto.response"/>
-		<!-- AdminWeb Artappm(지원사업 신청) DTOs -->
-		<package name="arami.adminWeb.artappm.service.dto.request"/>
-		<package name="arami.adminWeb.artappm.service.dto.response"/>
-		<!-- AdminWeb Artapps(공부의명수 ARTAPPS) DTOs -->
-		<package name="arami.adminWeb.artapps.service.dto.request"/>
-		<package name="arami.adminWeb.artapps.service.dto.response"/>
-		<!-- AdminWeb Artadvi(상담관리/멘토지정) DTOs -->
-		<package name="arami.adminWeb.artadvi.service.dto.request"/>
-		<package name="arami.adminWeb.artadvi.service.dto.response"/>
 		<!-- AdminWeb Banner(배너관리) DTOs -->
 		<package name="arami.adminWeb.banner.service.dto.request"/>
 		<package name="arami.adminWeb.banner.service.dto.response"/>
 		<!-- AdminWeb Armbuild(건축물용도) DTOs -->
 		<package name="arami.adminWeb.armbuild.service.dto.request"/>
 		<package name="arami.adminWeb.armbuild.service.dto.response"/>
-		<!-- AdminWeb Artedum(가맹학원 신청) DTOs -->
-		<package name="arami.adminWeb.artedum.service.dto.request"/>
-		<package name="arami.adminWeb.artedum.service.dto.response"/>
 		<!-- AdminWeb Code(공통코드) DTOs -->
 		<package name="arami.common.adminWeb.code.service.dto.request"/>
 		<package name="arami.common.adminWeb.code.service.dto.response"/>
 		<!-- Shared Armuser(공통 사용자) DTOs -->
 		<package name="arami.shared.armuser.dto.request"/>
 		<package name="arami.shared.armuser.dto.response"/>
-		<!-- Shared Armchil(자녀관리) DTOs -->
-		<package name="arami.shared.armchil.dto.request"/>
-		<package name="arami.shared.armchil.dto.response"/>
-		<!-- Shared Proc(공통 프로시저/함수) DTOs -->
-		<package name="arami.shared.proc.dto.request"/>
-		<package name="arami.shared.proc.dto.response"/>
-		<!-- UserWeb Artprom(지원사업) DTOs -->
-		<package name="arami.userWeb.artprom.service.dto.request"/>
-		<package name="arami.userWeb.artprom.service.dto.response"/>
-		<!-- UserWeb MentorWork(멘토업무) DTOs -->
-		<package name="arami.userWeb.mentorWork.service.dto.request"/>
-		<package name="arami.userWeb.mentorWork.service.dto.response"/>
-		<!-- UserWeb OAuth DTOs -->
-		<package name="arami.userWeb.oauth.service.dto.request"/>
-		<package name="arami.userWeb.oauth.service.dto.response"/>
 		<!-- AdminWeb Support(오수 원인자부담금) DTOs -->
 		<package name="arami.adminWeb.support.service.dto.request"/>
 		<package name="arami.adminWeb.support.service.dto.response"/>

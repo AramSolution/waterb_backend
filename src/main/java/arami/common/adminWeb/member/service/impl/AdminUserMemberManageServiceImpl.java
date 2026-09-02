@@ -210,5 +210,15 @@ public class AdminUserMemberManageServiceImpl extends EgovAbstractServiceImpl im
 	public int deleteUserMemberAjax(MemberDeleteRequest request) throws Exception{
 		return adminUserMemberManageDAO.deleteUserMemberAjax(request);
 	}
+
+	@Override
+	public String checkMemberId(Object object) throws Exception {
+		return adminUserMemberManageDAO.checkMemberId(object);
+	}
+
+	@Override
+	public String checkMemberId2(Object object) throws Exception {
+		return adminUserMemberManageDAO.checkMemberId2(object);
+	}
 }
 

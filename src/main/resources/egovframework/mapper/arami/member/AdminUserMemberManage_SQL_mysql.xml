@@ -565,4 +565,17 @@
 		     , CHG_LAST_DT = NOW()
 		 WHERE ESNTL_ID          = #{esntlId}
 	</update>
+
+	<select id="checkMemberId" parameterType="egovMap" resultType="String">
+		SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+		  FROM ARMUSER
+		 WHERE USER_ID = #{userId}
+	</select>
+
+	<select id="checkMemberId2" parameterType="egovMap" resultType="String">
+		SELECT IF( COUNT(1), 'N', 'Y' ) AS checkYn
+		  FROM ARMUSER
+		 WHERE USER_ID = #{userId}
+		   AND ESNTL_ID != #{esntlId}
+	</select>
 </mapper>

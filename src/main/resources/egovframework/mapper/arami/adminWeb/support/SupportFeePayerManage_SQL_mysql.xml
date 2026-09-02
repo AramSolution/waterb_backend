@@ -50,7 +50,7 @@
                COALESCE(A1.WATER_PAY, 0) AS waterPay
           FROM ARTITED A1
          WHERE A1.ITEM_ID = #{_parameter}
-         ORDER BY A1.SEQ ASC
+         ORDER BY A1.SEQ DESC
     </select>
 
     <!-- 상세: ITEM_ID 전체 ARTITEC 산정 행 + ARMBULD 건물명 -->
@@ -94,7 +94,7 @@
             ON A2.ITEM_ID = A1.ITEM_ID
            AND A2.SEQ = A1.SEQ
          WHERE A1.ITEM_ID = #{_parameter}
-         ORDER BY A1.SEQ ASC, A2.SEQ2 ASC
+         ORDER BY A1.SEQ DESC, A2.SEQ2 ASC
     </select>
 
     <!-- 목록/엑셀 공통 WHERE: 신청일·성명·주소·납부상태(paySta 00=미적용) -->

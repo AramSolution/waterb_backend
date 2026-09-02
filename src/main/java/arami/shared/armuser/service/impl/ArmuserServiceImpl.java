@@ -1,16 +1,13 @@
 package arami.shared.armuser.service.impl;
 
-import arami.common.userWeb.member.service.MemberUsrService;
-import arami.shared.armuser.dto.request.AcademyListForUserRequest;
+import arami.shared.armuser.dto.response.ArmuserUserIdCheckResponse;
 import arami.shared.armuser.dto.request.ArmuserDetailRequest;
 import arami.shared.armuser.dto.request.ArmuserDeleteRequest;
 import arami.shared.armuser.dto.request.ArmuserInsertRequest;
 import arami.shared.armuser.dto.request.ArmuserListRequest;
 import arami.shared.armuser.dto.request.ArmuserUpdateRequest;
-import arami.shared.armuser.dto.response.AcademyListForUserItem;
 import arami.shared.armuser.dto.response.ArmuserDTO;
 import arami.shared.armuser.dto.response.ArmuserCrtfcDnValueCheckResponse;
-import arami.shared.armuser.dto.response.ArmuserUserIdCheckResponse;
 import arami.shared.armuser.dto.response.ArmuserResultResponse;
 import arami.shared.armuser.service.ArmuserManageDAO;
 import arami.shared.armuser.service.ArmuserService;
@@ -25,9 +22,7 @@ import org.egovframe.rte.fdl.idgnr.EgovIdGnrService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * ARMUSER(공통 사용자) Service 구현
@@ -37,9 +32,6 @@ public class ArmuserServiceImpl extends EgovAbstractServiceImpl implements Armus
 
     @Resource(name = "armuserManageDAO")
     private ArmuserManageDAO armuserManageDAO;
-
-    @Resource(name = "memberUsrService")
-    private MemberUsrService memberUsrService;
 
     @Resource(name = "egovUsrCnfrmIdGnrService")
     private EgovIdGnrService idgenService;
@@ -57,18 +49,6 @@ public class ArmuserServiceImpl extends EgovAbstractServiceImpl implements Armus
     public int selectListCount(ArmuserListRequest request) {
         request.setDefaultPaging();
         return armuserManageDAO.selectListCount(request);
-    }
-
-    @Override
-    public List<AcademyListForUserItem> selectAcademyListForUserWeb(AcademyListForUserRequest request) {
-        request.setDefaultPaging();
-        return armuserManageDAO.selectAcademyListForUserWeb(request);
-    }
-
-    @Override
-    public int selectAcademyListForUserWebCount(AcademyListForUserRequest request) {
-        request.setDefaultPaging();
-        return armuserManageDAO.selectAcademyListForUserWebCount(request);
     }
 
     @Override
@@ -154,11 +134,6 @@ public class ArmuserServiceImpl extends EgovAbstractServiceImpl implements Armus
     }
 
     @Override
-    public ArmuserDTO selectAcademyMainDetail(ArmuserDetailRequest request) {
-        return armuserManageDAO.selectAcademyMainDetail(request);
-    }
-
-    @Override
     public ArmuserResultResponse insertArmuser(ArmuserInsertRequest request) {
         if (request == null) {
             ArmuserResultResponse r = new ArmuserResultResponse();
@@ -174,10 +149,8 @@ public class ArmuserServiceImpl extends EgovAbstractServiceImpl implements Armus
         }
         // [1] 아이디 중복 체크 (ARMUSER.USER_ID)
         try {
-            Map<String, String> checkModel = new HashMap<>();
-            checkModel.put("userId", request.getUserId());
-            String checkYn = memberUsrService.checkMemberId(checkModel);
-            if ("N".equals(checkYn)) {
+            ArmuserUserIdCheckResponse idCheck = armuserManageDAO.selectUserIdCheck(request.getUserId());
+            if (idCheck != null && idCheck.getExist() == 1) {
                 ArmuserResultResponse r = new ArmuserResultResponse();
                 r.setResult("50");
                 r.setMessage("중복되는 아이디가 있습니다. 다른 아이디를 사용하여 주십시요.");

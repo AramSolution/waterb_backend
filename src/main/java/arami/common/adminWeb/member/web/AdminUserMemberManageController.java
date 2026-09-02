@@ -14,7 +14,6 @@ import arami.common.adminWeb.member.service.dto.response.AdminMemberResultRespon
 import arami.common.adminWeb.member.service.dto.response.MemberDetailResponse;
 import arami.common.adminWeb.member.service.dto.response.MemberExcelListResponse;
 import arami.common.adminWeb.member.service.dto.response.AuthListResponse;
-import arami.common.userWeb.member.service.MemberUsrService;
 import egovframework.com.cmm.EgovMessageSource;
 import egovframework.com.cmm.service.EgovProperties;
 import egovframework.let.utl.sim.service.EgovFileScrty;
@@ -47,14 +46,11 @@ public class AdminUserMemberManageController extends CommonService {
     private EgovMessageSource egovMessageSource;
 
     @Resource
-	private MemberUsrService memberUsrService;
+	private AdminUserMemberManageService adminUserMemberManageService;
 
     /* 사용이유 : Egov 자동코드 생성 */
 	@Resource(name = "egovUsrCnfrmIdGnrService")
 	private EgovIdGnrService idgenService;
-    
-	@Resource
-	private AdminUserMemberManageService adminUserMemberManageService;
 	
 	/** 암호화 유틸리티 */
 	@Resource
@@ -165,7 +161,7 @@ public class AdminUserMemberManageController extends CommonService {
 			// ====================== 아이디 중복 체크 실행 ======================
 			ModelMap checkModel = new ModelMap();
 			checkModel.put("userId", request.getUserId());
-			String checkYn = memberUsrService.checkMemberId(checkModel);	// Y : 가능 N : 불가
+			String checkYn = adminUserMemberManageService.checkMemberId(checkModel);	// Y : 가능 N : 불가
 
 			if( "Y".equals(checkYn) ) {
 				/** [1] 코드채번 + SHA256 */
@@ -262,7 +258,7 @@ public class AdminUserMemberManageController extends CommonService {
 			ModelMap checkModel = new ModelMap();
 			checkModel.put("userId", request.getUserId());
 			checkModel.put("esntlId", request.getEsntlId());
-			String checkYn = memberUsrService.checkMemberId2(checkModel);	// Y : 가능 N : 불가
+			String checkYn = adminUserMemberManageService.checkMemberId2(checkModel);	// Y : 가능 N : 불가
 
 			if( "Y".equals(checkYn) ) {
 				String newPw = "";

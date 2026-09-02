@@ -1,12 +1,10 @@
 package arami.shared.armuser.service;
 
-import arami.shared.armuser.dto.request.AcademyListForUserRequest;
 import arami.shared.armuser.dto.request.ArmuserDetailRequest;
 import arami.shared.armuser.dto.request.ArmuserDeleteRequest;
 import arami.shared.armuser.dto.request.ArmuserInsertRequest;
 import arami.shared.armuser.dto.request.ArmuserListRequest;
 import arami.shared.armuser.dto.request.ArmuserUpdateRequest;
-import arami.shared.armuser.dto.response.AcademyListForUserItem;
 import arami.shared.armuser.dto.response.ArmuserDTO;
 import arami.shared.armuser.dto.response.ArmuserCrtfcDnValueCheckResponse;
 import arami.shared.armuser.dto.response.ArmuserUserIdCheckResponse;
@@ -29,15 +27,6 @@ public class ArmuserManageDAO extends EgovAbstractMapper {
         return selectOne("armuserManageDAO.selectListCount", request);
     }
 
-    /** 사용자웹 학원조회: 정상 학원(ANR, P) 전부 + 과목(콤마/공백) */
-    public List<AcademyListForUserItem> selectAcademyListForUserWeb(AcademyListForUserRequest request) {
-        return selectList("armuserManageDAO.selectAcademyListForUserWeb", request);
-    }
-
-    public int selectAcademyListForUserWebCount(AcademyListForUserRequest request) {
-        return selectOne("armuserManageDAO.selectAcademyListForUserWebCount", request);
-    }
-
     public List<ArmuserDTO> selectExcelList(ArmuserListRequest request) {
         return selectList("armuserManageDAO.selectExcelList", request);
     }
@@ -52,10 +41,6 @@ public class ArmuserManageDAO extends EgovAbstractMapper {
 
     public ArmuserDTO selectDetail(ArmuserDetailRequest request) {
         return selectOne("armuserManageDAO.selectDetail", request);
-    }
-
-    public ArmuserDTO selectAcademyMainDetail(ArmuserDetailRequest request) {
-        return selectOne("armuserManageDAO.selectAcademyMainDetail", request);
     }
 
     public int insertArmuser(ArmuserInsertRequest request) {

@@ -83,8 +83,6 @@ dependencies {
 
     // OAuth (ScribeJava)
     implementation 'com.github.scribejava:scribejava-apis:8.3.1'
-    implementation files('src/main/resources/libs/commons-httpclient-3.1.jar')
-    implementation files('src/main/resources/libs/libgpkiapi_jni_1.5.jar')
 }
 
 group = 'co.kr.uaram'
@@ -106,11 +104,4 @@ tasks.withType(JavaCompile) {
 
 tasks.withType(Javadoc) {
     options.encoding = 'UTF-8'
-}
-
-tasks.register('exportNeisCert', JavaExec) {
-    group = 'other'
-    description = 'Export open.neis.go.kr certificate to neis.cer for truststore import'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'arami.shared.neis.util.NeisCertExporter'
 }

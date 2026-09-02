@@ -262,50 +262,6 @@
            </if>
     </select>
 
-    <!-- 사용자웹 학원조회: 정상 학원(ANR, P) 전부 + 과목(ARTEDUD 콤마, 없으면 공백) -->
-    <select id="selectAcademyListForUserWeb" parameterType="AcademyListForUserRequest" resultType="AcademyListForUserItem">
-        SELECT *
-          FROM (
-            SELECT ROW_NUMBER() OVER (ORDER BY A2.SBSCRB_DE DESC) AS RNUM
-                , COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
-                , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
-                , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
-                , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
-                , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
-                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
-                , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS USR_TELNO
-                , COALESCE(
-                    (SELECT GROUP_CONCAT(DISTINCT D.SUB_NM ORDER BY D.SUB_NM SEPARATOR ',')
-                     FROM ARTEDUM AM
-                     INNER JOIN ARTEDUD D ON D.EDU_ESNTL_ID = AM.EDU_ESNTL_ID AND D.EDU_GB = AM.EDU_GB AND D.STTUS_CODE = 'A'
-                     WHERE AM.EDU_ESNTL_ID = A2.ESNTL_ID AND AM.STTUS_CODE = 'A'),
-                    ''
-                  ) AS SUB_NM_LIST
-                , COALESCE(A2.USER_PIC, '') AS USER_PIC
-                , (SELECT MIN(F.SEQ) FROM ARTFILE F WHERE F.FILE_ID = A2.USER_PIC AND TRIM(COALESCE(A2.USER_PIC, '')) != '') AS USER_PIC_SEQ
-                , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
-              FROM ARMUSER A2
-             WHERE 1=1
-               AND A2.USER_SE = 'ANR'
-               AND A2.MBER_STTUS = 'P'
-               <if test='searchCondition == "1" and searchKeyword != null and searchKeyword != ""'>
-               AND (DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%') OR A2.SCHOOL_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
-               </if>
-          ) A1
-         LIMIT #{lengthPage} OFFSET #{startIndex}
-    </select>
-
-    <select id="selectAcademyListForUserWebCount" parameterType="AcademyListForUserRequest" resultType="int">
-        SELECT COUNT(1)
-          FROM ARMUSER A2
-         WHERE 1=1
-           AND A2.USER_SE = 'ANR'
-           AND A2.MBER_STTUS = 'P'
-           <if test='searchCondition == "1" and searchKeyword != null and searchKeyword != ""'>
-           AND (DECRYPT(A2.USER_NM) LIKE CONCAT('%', #{searchKeyword}, '%') OR A2.SCHOOL_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
-           </if>
-    </select>
-
     <!-- 본인인증 완료 시 수신한 DI(개인식별코드) - ARMUSER.CRTFC_DN_VALUE 조회 존재 여부 확인 -->
     <select id="selectCrtfcDnValueCheck" parameterType="string" resultType="ArmuserCrtfcDnValueCheckResponse">
         SELECT 1 AS exist
@@ -428,49 +384,6 @@
              , COALESCE(A1.FARM_DESC, '') AS FARM_DESC
           FROM ARMUSER A1
          WHERE A1.ESNTL_ID = #{esntlId}
-    </select>
-
-    <!-- userWeb 메인(학원)용 학원 상세 조회: subjects은 ARTEDUM/ARTEDUD group_concat -->
-    <select id="selectAcademyMainDetail" parameterType="ArmuserDetailRequest" resultType="ArmuserDTO">
-        SELECT
-            COALESCE(A2.ESNTL_ID, '') AS ESNTL_ID
-          , COALESCE(A2.CXFC, '') AS CXFC
-          , COALESCE(A2.BIZRNO, '') AS BIZRNO
-          , COALESCE(DECRYPT(A2.FXNUM), '') AS FXNUM
-          , COALESCE(DECRYPT(A2.USER_NM), '') AS USER_NM
-          , COALESCE(DECRYPT(A2.EMAIL_ADRES), '') AS EMAIL_ADRES
-          , COALESCE(A2.SCHOOL_NM, '') AS SCHOOL_NM
-          , COALESCE(DECRYPT(A2.ADRES), '') AS ADRES
-          , COALESCE(DECRYPT(A2.DETAIL_ADRES), '') AS DETAIL_ADRES
-          , COALESCE(FN_MASK_PHONE(DECRYPT(A2.OFFM_TELNO), 'N'), '') AS OFFM_TELNO
-          , COALESCE(FN_MASK_PHONE(DECRYPT(A2.MBTLNUM), 'N'), '') AS MBTLNUM
-          , COALESCE(
-                (
-                  SELECT GROUP_CONCAT(DISTINCT D.SUB_NM ORDER BY D.SUB_NM SEPARATOR ',')
-                    FROM ARTEDUM AM
-                   INNER JOIN ARTEDUD D
-                      ON D.EDU_ESNTL_ID = AM.EDU_ESNTL_ID
-                     AND D.EDU_GB = AM.EDU_GB
-                     AND D.STTUS_CODE = 'A'
-                   WHERE AM.EDU_ESNTL_ID = A2.ESNTL_ID
-                     AND AM.STTUS_CODE = 'A'
-                ),
-                ''
-            ) AS SUBJECT_DESC
-          , COALESCE(A2.USER_PIC, '') AS USER_PIC
-          , (SELECT MIN(F.SEQ)
-               FROM ARTFILE F
-              WHERE F.FILE_ID = A2.USER_PIC
-                AND TRIM(COALESCE(A2.USER_PIC, '')) != ''
-            ) AS USER_PIC_SEQ
-          , COALESCE(A2.PROFILE_DESC, '') AS PROFILE_DESC
-          , COALESCE(A2.OAUTH_GB, '') AS OAUTH_GB
-          , COALESCE(A2.NAVER_AUTH_ID, '') AS NAVER_AUTH_ID
-          , COALESCE(A2.KAKAO_AUTH_ID, '') AS KAKAO_AUTH_ID
-        FROM ARMUSER A2
-        WHERE 1=1
-          AND A2.USER_SE = 'ANR'
-          AND A2.ESNTL_ID = #{esntlId}
     </select>
 
     <!-- ARMUSER 등록 -->
